@@ -9,6 +9,23 @@ const io = new Server(server);
 
 const path = require("path");
 
+// 1. CORS 설정 추가 (React 개발 서버 포트 허용)
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173", // Vite 기본 포트
+    methods: ["GET", "POST"],
+  },
+});
+
+// 2. 정적 파일 경로 수정 (client -> dist)
+// 빌드된 리액트 파일들이 위치할 폴더입니다.
+app.use(express.static(path.join(__dirname, "..", "dist")));
+
+app.get("*", (req, res) => {
+  // 모든 경로에서 리액트의 index.html을 반환하도록 설정 (SPA 라우팅 대비)
+  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+});
+
 
 app.use(express.static(path.join(__dirname, "..", "client")));
 app.get("/", (req, res) => {
