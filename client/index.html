@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Story Phone - 실시간 스토리 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <section id="screen-name" class="screen">
+            <div class="card">
+                <h1>STORY PHONE</h1>
+                <input type="text" id="input-nickname" placeholder="닉네임을 입력하세요" maxlength="10">
+                <button id="btn-next">다음으로</button>
+            </div>
+        </section>
+
+        <section id="screen-lobby" class="screen hidden">
+            <div class="grid">
+                <div class="card shadow-yellow">
+                    <h2>방 만들기</h2>
+                    <p>새로운 게임을 시작합니다.</p>
+                    <button id="btn-create-room">방 생성</button>
+                </div>
+                <div class="card shadow-blue">
+                    <h2>참여하기</h2>
+                    <input type="text" id="input-room-code" placeholder="방 코드 입력">
+                    <button id="btn-join-room">방 입장</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-waiting" class="screen hidden">
+            <div class="card wide">
+                <div class="header">
+                    <h2>대기실 <span id="display-room-code">#----</span></h2>
+                </div>
+                <div id="player-list" class="player-grid">
+                    </div>
+                <div class="controls">
+                    <button id="btn-leave" class="btn-secondary">나가기</button>
+                    <button id="btn-start" class="btn-primary">게임 시작</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
