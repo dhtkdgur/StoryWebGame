@@ -157,6 +157,7 @@ function resetForNewGame(room) {
   }
 }
 
+// ====================================================================
 // 제시어 로직
 
 // 모든 플레이어가 제시어 제출했는지 확인
@@ -179,8 +180,8 @@ function assignPrompts(room) {
 
   shuffle(all);
 
-  // 플레이어에게 4개씩 분배(플레이어 수*4만큼 사용)
-  const per = 4;
+  // 플레이어에게 3개씩 분배(플레이어 수*3만큼 사용)
+  const per = 3;
   for (let i = 0; i < ids.length; i++) {
     const sid = ids[i];
     const slice = all.slice(i * per, i * per + per);
@@ -189,6 +190,7 @@ function assignPrompts(room) {
   }
 }
 
+// ====================================================================
 // 스토리 체인 계산 로직
 
 // 각 플레이어의 스토리 체인 초기화
@@ -237,11 +239,15 @@ function startRound(roomId) {
     room.game.chainForPlayer[sid] = chainId;
 
     const chain = room.game.storyChains[chainId];
-    const chainEntries = (chain?.entries || []).map((e) => ({
-      round: e.round,
-      writerId: e.writerId,
-      text: e.text,
-    }));
+    let chainEntries = [];
+    if (chain?.entries && chain.entries.length > 0) {
+      const last = chain.entries[chain.entries.length - 1];
+      chainEntries = [{
+        round: last.round,
+        writerId: last.writerId,
+        text: last.text,
+      }];
+    }
 
     io.to(sid).emit("story:round", {
       roomId: room.roomId,
@@ -452,7 +458,7 @@ io.on("connection", (socket) => {
       const arr = Array.isArray(prompts) ? prompts : [];
       const cleaned = arr.map((x) => String(x ?? "").trim()).filter(Boolean);
 
-      if (cleaned.length !== 4) return ack?.({ ok: false, error: "NEED_4_PROMPTS" });
+      if (cleaned.length !== 3) return ack?.({ ok: false, error: "NEED_3_PROMPTS" });
 
       p.prompts = cleaned;
       p.submitted.prompts = true;
