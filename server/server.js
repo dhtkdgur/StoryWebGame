@@ -159,6 +159,55 @@ function resetForNewGame(room) {
 
 // 제시어 로직
 
+// 기본 제공 제시어 리스트
+const DEFAULT_PROMPTS = [
+  "고무장갑",
+  "편의점",
+  "충전기",
+  "엘리베이터",
+  "수첩",
+  "물컵",
+  "비밀번호",
+  "우산",
+  "메모지",
+  "형광펜",
+  "이어폰",
+  "종이봉투",
+  "손목시계",
+  "리모컨",
+  "서랍",
+  "단톡방",
+  "캡처",
+  "오해",
+  "폭로",
+  "비밀",
+  "뒷담화",
+  "삭제",
+  "침묵",
+  "편집",
+  "전달",
+  "왜곡",
+  "확산",
+  "눈치",
+  "부인",
+  "후폭풍",
+  "범벅",
+  "몰래스크린샷",
+  "의문의알고리즘",
+  "새벽감성",
+  "과몰입",
+  "주인없는양말",
+  "갑분싸",
+  "현타",
+  "정체불명링크",
+  "무한눈치게임",
+  "카톡읽씹",
+  "급발진",
+  "뇌정지",
+  "혼자북치고장구치기",
+  "웃참실패",
+];
+
 // 모든 플레이어가 제시어 제출했는지 확인
 function allPromptsSubmitted(room) {
   const ids = Object.keys(room.players);
@@ -169,24 +218,59 @@ function allPromptsSubmitted(room) {
 // 제시어를 모아서 셔플 후 각 플레이어에게 분배
 function assignPrompts(room) {
   const ids = Object.keys(room.players);
-  const all = [];
+  const userPrompts = [];
   
-  // 모든 제시어 수집
+  // 사용자가 입력한 제시어 수집 (본인 제시어도 포함하여 수집)
   for (const sid of ids) {
     const p = room.players[sid];
-    for (const s of p.prompts || []) all.push(s);
+    for (const s of p.prompts || []) {
+      userPrompts.push(s);
+    }
   }
 
-  shuffle(all);
+  // 기본 제시어 리스트 복사 (원본 보호)
+  const defaultPrompts = [...DEFAULT_PROMPTS];
+  
+  // 기본 제시어와 사용자 제시어 합치기
+  const allPrompts = [...userPrompts, ...defaultPrompts];
+  
+  // 전체 제시어 섞기
+  shuffle(allPrompts);
 
-  // 플레이어에게 4개씩 분배(플레이어 수*4만큼 사용)
+  // 플레이어에게 4개씩 분배
   const per = 4;
+  const usedPrompts = new Set(); // 사용된 제시어 추적 (한 번 나온 제시어는 다시 나오지 않음)
+  let availablePrompts = [...allPrompts]; // 사용 가능한 제시어 리스트
+  
   for (let i = 0; i < ids.length; i++) {
     const sid = ids[i];
-    const slice = all.slice(i * per, i * per + per);
+    const slice = [];
+    
+    // 각 플레이어에게 4개씩 할당
+    for (let j = 0; j < per; j++) {
+      // 사용 가능한 제시어가 없으면 경고하고 종료
+      if (availablePrompts.length === 0) {
+        console.warn(`[assignPrompts] 사용 가능한 제시어 부족: 플레이어 ${i + 1}/${ids.length}, 할당된 제시어: ${slice.length}/${per}`);
+        break;
+      }
+      
+      // 사용 가능한 제시어 중 첫 번째 것을 선택하고 제거
+      const selectedPrompt = availablePrompts.shift();
+      slice.push(selectedPrompt);
+      usedPrompts.add(selectedPrompt);
+    }
+    
+    // 4개 미만으로 할당된 경우 경고
+    if (slice.length < per) {
+      console.warn(`[assignPrompts] 플레이어 ${sid}에게 제시어 ${slice.length}개만 할당됨 (필요: ${per}개)`);
+    }
+    
     room.game.inboxPrompts[sid] = slice;
     room.players[sid].inboxPrompts = slice;
   }
+  
+  // 사용된 제시어를 게임 객체에 저장 (디버깅/확인용)
+  room.game.usedPrompts = Array.from(usedPrompts);
 }
 
 // 스토리 체인 계산 로직
