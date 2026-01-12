@@ -35,8 +35,7 @@
                 <div class="header">
                     <h2>대기실 <span id="display-room-code">#----</span></h2>
                 </div>
-                <div id="player-list" class="player-grid">
-                    </div>
+                <div id="player-list" class="player-grid"></div>
                 <div class="controls">
                     <button id="btn-leave" class="btn-secondary">나가기</button>
                     <button id="btn-start" class="btn-primary">게임 시작</button>
@@ -46,7 +45,7 @@
 
         <section id="screen-prompts" class="screen hidden">
             <div class="card wide">
-                <h2>💡 4개의 제시어를 입력하세요</h2>
+                <h2>4개의 제시어를 입력하세요</h2>
                 <p class="subtitle">당신의 아이디어가 스토리가 됩니다!</p>
                 <div class="prompt-inputs">
                     <input type="text" class="input-prompt" placeholder="제시어 1 (예: 배고픈 호랑이)">
@@ -59,11 +58,34 @@
             </div>
         </section>
 
+        <section id="screen-story" class="screen hidden">
+            <div class="card wide">
+                <h2>라운드 <span id="display-round">0</span> / <span id="display-total-rounds">0</span></h2>
+
+                <div style="margin-top: 10px;">
+                    <p class="subtitle">이번 라운드 제시어</p>
+                    <div id="my-inbox-prompts" class="result-grid"></div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <p class="subtitle">지금까지의 이야기</p>
+                    <div id="story-so-far" class="card" style="width: 100%; text-align:left;"></div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <p class="subtitle">이어쓰기</p>
+                    <textarea id="input-story-text" rows="4" style="width:100%; padding:12px; border-radius:8px; border:2px solid #475569; background:#1e293b; color:white; box-sizing:border-box;" placeholder="여기에 문장을 입력하세요"></textarea>
+                </div>
+
+                <button id="btn-submit-story" style="margin-top: 10px;">제출</button>
+                <p id="story-wait-msg" class="hidden">다른 플레이어들을 기다리는 중...</p>
+            </div>
+        </section>
+
         <section id="screen-results" class="screen hidden">
             <div class="card wide">
-                <h2>모든 제시어 목록</h2>
-                <div id="result-list" class="result-grid">
-                    </div>
+                <h2>결과</h2>
+                <div id="final-results"></div>
                 <button onclick="location.reload()">처음으로</button>
             </div>
         </section>
