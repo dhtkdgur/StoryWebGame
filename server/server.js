@@ -140,7 +140,7 @@ function resetForNewGame(room) {
   const ids = Object.keys(room.players);
   room.game.round = 0;
   room.game.turnOrder = ids.slice(); // 플레이어 순서 고정
-  room.game.totalRounds = Math.max(1, ids.length - 1);
+  room.game.totalRounds = Math.max(1, ids.length);
 
   room.game.promptPool = {};
   room.game.inboxPrompts = {};
