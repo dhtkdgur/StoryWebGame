@@ -1,37 +1,26 @@
-// 서ㅏ버 기본 뼈대
+// 서버 기본 뼈대
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
 
-const path = require("path");
-
-// 1. CORS 설정 추가 (React 개발 서버 포트 허용)
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Vite 기본 포트
+    origin: true,
     methods: ["GET", "POST"],
   },
 });
 
 // 2. 정적 파일 경로 수정 (client -> dist)
-// 빌드된 리액트 파일들이 위치할 폴더입니다.
-app.use(express.static(path.join(__dirname, "..", "dist")));
-
-app.get("*", (req, res) => {
-  // 모든 경로에서 리액트의 index.html을 반환하도록 설정 (SPA 라우팅 대비)
-  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
-});
-
-
+// 빌드된 리액트 파일들이 위치할 폴더
 app.use(express.static(path.join(__dirname, "..", "client")));
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "index.html"));
 });
-
 
 
 //서버가 기억하는 방 목록
@@ -82,9 +71,8 @@ function emitRoomState(roomId) {
 }
 
 io.on("connection", (socket) => {
-  console.log("✅ connected:", socket.id);
+  console.log("connected:", socket.id);
 
-  // --- room:create ---
   socket.on("room:create", ({ name }, ack) => {
     try {
       const trimmed = String(name ?? "").trim();
@@ -99,7 +87,6 @@ io.on("connection", (socket) => {
         players: {},
       };
 
-      // join room + add player
       socket.join(roomId);
       rooms[roomId].players[socket.id] = {
         id: socket.id,
@@ -107,10 +94,7 @@ io.on("connection", (socket) => {
         joinedAt: Date.now(),
       };
 
-      // socket에 현재 roomId 붙여두기(편의)
       socket.data.roomId = roomId;
-
-      console.log(`🏠 room created: ${roomId} by ${socket.id}`);
 
       ack?.({ ok: true, roomId, state: getRoomState(roomId) });
       emitRoomState(roomId);
@@ -120,7 +104,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // --- room:join ---
   socket.on("room:join", ({ roomId, name }, ack) => {
     try {
       const rid = String(roomId ?? "").trim();
@@ -132,7 +115,6 @@ io.on("connection", (socket) => {
       const room = rooms[rid];
       if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
 
-      // join room + add player
       socket.join(rid);
       room.players[socket.id] = {
         id: socket.id,
@@ -140,8 +122,6 @@ io.on("connection", (socket) => {
         joinedAt: Date.now(),
       };
       socket.data.roomId = rid;
-
-      console.log(`🚪 room joined: ${rid} by ${socket.id}`);
 
       ack?.({ ok: true, roomId: rid, state: getRoomState(rid) });
       emitRoomState(rid);
@@ -151,20 +131,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  // --- optional: room:leave (프론트가 나가기 버튼 만들 때 쓰기 좋음) ---
   socket.on("room:leave", (_payload, ack) => {
     const rid = socket.data.roomId;
     if (!rid || !rooms[rid]) return ack?.({ ok: true });
 
-    // remove player
     delete rooms[rid].players[socket.id];
     socket.leave(rid);
     socket.data.roomId = null;
 
-    // 방 비었으면 삭제
     if (Object.keys(rooms[rid].players).length === 0) {
       delete rooms[rid];
-      console.log(`🧹 room deleted: ${rid}`);
       return ack?.({ ok: true });
     }
 
@@ -174,23 +150,18 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const rid = socket.data.roomId;
-    console.log("❌ disconnected:", socket.id);
 
     if (!rid || !rooms[rid]) return;
 
-    // remove player
     delete rooms[rid].players[socket.id];
 
-    // host 나가면 hostId 갱신(남아있는 첫 사람을 host로)
     if (rooms[rid].hostId === socket.id) {
       const nextHostId = Object.keys(rooms[rid].players)[0];
       rooms[rid].hostId = nextHostId ?? null;
     }
 
-    // 방 비었으면 삭제
     if (Object.keys(rooms[rid].players).length === 0) {
       delete rooms[rid];
-      console.log(`🧹 room deleted: ${rid}`);
       return;
     }
 
@@ -199,4 +170,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = 3000;
-server.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
