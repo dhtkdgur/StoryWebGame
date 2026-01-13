@@ -1,38 +1,31 @@
 const socket = io();
 
-// ---- DOM helper ----
+// ---- DOM ----
 const $ = (id) => document.getElementById(id);
 
-// ---- Screens ----
-const screenEntry = $("screen-entry");
-const screenJoin = $("screen-join");
+const screenName = $("screen-name");
 const screenLobby = $("screen-lobby");
+const screenWaiting = $("screen-waiting");
 const screenPrompts = $("screen-prompts");
 const screenStory = $("screen-story");
 const screenResults = $("screen-results");
 
-// ---- Entry ----
 const nicknameInput = $("input-nickname");
-const btnCreate = $("btn-create");
-const btnGoJoin = $("btn-go-join");
+const btnNext = $("btn-next");
 
-// ---- Join ----
+const btnCreateRoom = $("btn-create-room");
 const roomCodeInput = $("input-room-code");
-const btnJoin = $("btn-join");
+const btnJoinRoom = $("btn-join-room");
 
-// ---- Lobby ----
-const roomCodeText = $("room-code");
+const displayRoomCode = $("display-room-code");
 const playerList = $("player-list");
-const hostControls = $("host-controls");
-const btnCopy = $("btn-copy");
+
+const btnLeave = $("btn-leave");
 const btnStart = $("btn-start");
-const waitMsgLobby = $("wait-msg-lobby");
 
-// ---- Prompts ----
 const btnSubmitPrompts = $("btn-submit-prompts");
-const waitMsgPrompts = $("wait-msg-prompts");
+const waitMsg = $("wait-msg");
 
-// ---- Story ----
 const displayRound = $("display-round");
 const displayTotalRounds = $("display-total-rounds");
 const myInboxPrompts = $("my-inbox-prompts");
@@ -41,83 +34,60 @@ const inputStoryText = $("input-story-text");
 const btnSubmitStory = $("btn-submit-story");
 const storyWaitMsg = $("story-wait-msg");
 
-// ---- Results ----
 const finalResults = $("final-results");
 
 // ---- Local state ----
-let app = {
-  nickname: "",
-  role: null, // "host" | "guest"
-  roomId: null,
-  lastRoomState: null
-};
-
+let myName = "";
+let currentRoomState = null;
 let currentRoundPayload = null;
 
 // ---- UI helpers ----
-function showScreen(target) {
-  [screenEntry, screenJoin, screenLobby, screenPrompts, screenStory, screenResults].forEach((s) =>
+function showScreen(which) {
+  [screenName, screenLobby, screenWaiting, screenPrompts, screenStory, screenResults].forEach((s) =>
     s?.classList.add("hidden")
   );
-  target?.classList.remove("hidden");
+  if (which) which.classList.remove("hidden");
 }
 
 function alertError(msg) {
   alert(msg);
 }
 
-function renderPlayers(players = [], hostId) {
+function renderPlayers(players, hostId) {
   if (!playerList) return;
   playerList.innerHTML = "";
+
   players.forEach((p) => {
     const div = document.createElement("div");
-    div.className = "player-item";
-    div.textContent = `${p.name}${p.id === hostId ? " (방장)" : ""}`;
+    div.className = "player-card";
+    const isHost = p.id === hostId;
+    const promptDone = p.submitted?.prompts ? " (제시어 완료)" : "";
+    div.textContent = `${p.name}${isHost ? " (방장)" : ""}${promptDone}`;
     playerList.appendChild(div);
   });
-}
-
-function updateLobbyUI(state) {
-  const isHost = socket.id === state.hostId;
-
-  if (hostControls && waitMsgLobby) {
-    if (isHost) {
-      hostControls.classList.remove("hidden");
-      waitMsgLobby.classList.add("hidden");
-    } else {
-      hostControls.classList.add("hidden");
-      waitMsgLobby.classList.remove("hidden");
-    }
-  }
-
-  if (btnStart) btnStart.disabled = !isHost;
-}
-
-function enterLobby(state) {
-  const roomId = state.roomId ?? state.roomID ?? state.id;
-  app.roomId = roomId;
-
-  if (roomCodeText) roomCodeText.textContent = `#${roomId || "----"}`;
-
-  renderPlayers(state.players || [], state.hostId);
-  updateLobbyUI(state);
-
-  showScreen(screenLobby);
 }
 
 function renderPromptChips(container, items) {
   if (!container) return;
   container.innerHTML = "";
-  (items || []).forEach((t) => {
+  for (const t of items || []) {
     const chip = document.createElement("div");
     chip.className = "result-item";
-    chip.textContent = String(t ?? "");
+    chip.textContent = t;
     container.appendChild(chip);
-  });
+  }
 }
 
-function renderStorySoFar(entries) {
+function renderStorySoFar(entries, round) {
   if (!storySoFar) return;
+  
+  if (round === 0) {
+    storySoFar.innerHTML = "";
+    storySoFar.classList.add("hidden");
+    return;
+  }
+
+  storySoFar.classList.remove("hidden");
 
   if (!entries || entries.length === 0) {
     storySoFar.textContent = "아직 아무도 작성하지 않았어.";
@@ -125,19 +95,15 @@ function renderStorySoFar(entries) {
   }
 
   storySoFar.innerHTML = entries
-    .map((e, idx) => {
-      const safe = String(e?.text ?? "");
-      return `<div style="margin-bottom:8px;"><b>${idx + 1}.</b> ${safe}</div>`;
-    })
+    .map((e) => `<div style="margin-bottom:8px;">${String(e.text || "")}</div>`)
     .join("");
 }
 
 function renderFinalResults(payload) {
   if (!finalResults) return;
-
   finalResults.innerHTML = "";
-  const chains = payload?.chains || [];
 
+  const chains = payload?.chains || [];
   if (chains.length === 0) {
     finalResults.textContent = "결과가 없어.";
     return;
@@ -145,20 +111,18 @@ function renderFinalResults(payload) {
 
   for (const chain of chains) {
     const wrap = document.createElement("div");
-    wrap.className = "card wide";
+    wrap.className = "card";
+    wrap.style.width = "100%";
     wrap.style.textAlign = "left";
     wrap.style.marginBottom = "12px";
 
-    const owner = String(chain?.ownerName ?? "익명");
-
-    const title = document.createElement("h3");
-    title.style.margin = "0 0 8px 0";
-    title.textContent = `${owner}의 이야기`;
+    const title = document.createElement("div");
+    title.innerHTML = `<h3 style="margin:0 0 8px 0;">${chain.ownerName}의 이야기</h3>`;
     wrap.appendChild(title);
 
     const body = document.createElement("div");
-    body.innerHTML = (chain?.entries || [])
-      .map((e, idx) => `<div style="margin-bottom:8px;"><b>${idx + 1}.</b> ${String(e?.text ?? "")}</div>`)
+    body.innerHTML = (chain.entries || [])
+      .map((e, idx) => `<div style="margin-bottom:8px;">${e.text}</div>`)
       .join("");
     wrap.appendChild(body);
 
@@ -166,57 +130,39 @@ function renderFinalResults(payload) {
   }
 }
 
-// ---- Debug ----
-socket.on("connect", () => console.log("connected:", socket.id));
-socket.on("disconnect", () => console.log("disconnected"));
+function goByPhase(state) {
+  if (!state) return;
 
-// ---- Entry actions ----
-btnCreate?.addEventListener("click", () => {
-  console.log("[UI] btn-create clicked");
-  const name = nicknameInput?.value?.trim() ?? "";
-  if (!name) return alertError("닉네임을 입력해줘!");
+  if (displayRoomCode) displayRoomCode.textContent = `#${state.roomId}`;
+  renderPlayers(state.players || [], state.hostId);
 
-  app.nickname = name;
-  app.role = "host";
+  if (btnStart) {
+    btnStart.disabled = socket.id !== state.hostId;
+  }
 
-  socket.emit("room:create", { name: app.nickname });
-});
-
-btnGoJoin?.addEventListener("click", () => {
-  console.log("[UI] btn-go-join clicked");
-  const name = nicknameInput?.value?.trim() ?? "";
-  if (!name) return alertError("닉네임을 입력해줘!");
-
-  app.nickname = name;
-  app.role = "guest";
-  showScreen(screenJoin);
-});
-
-// ---- Join actions ----
-btnJoin?.addEventListener("click", () => {
-  console.log("[UI] btn-join clicked");
-  const code = roomCodeInput?.value?.trim() ?? "";
-  if (!code) return alertError("방 코드를 입력해줘!");
-
-  socket.emit("room:join", { roomId: code, name: app.nickname });
-});
-
-// ---- Room state (single source of truth) ----
-socket.on("room:state", (state) => {
-  console.log("room:state", state);
-  app.lastRoomState = state;
-
-  if (state.phase === "lobby") return enterLobby(state);
+  if (state.phase === "lobby") {
+    showScreen(screenWaiting);
+    return;
+  }
 
   if (state.phase === "prompt") {
     showScreen(screenPrompts);
+
     if (btnSubmitPrompts) btnSubmitPrompts.disabled = false;
-    if (waitMsgPrompts) waitMsgPrompts.classList.add("hidden");
+    if (waitMsg) waitMsg.classList.add("hidden");
+
+    // 이미 제출한 사람은 버튼 잠그고 대기 메시지
+    const me = (state.players || []).find((p) => p.id === socket.id);
+    if (me?.submitted?.prompts) {
+      if (btnSubmitPrompts) btnSubmitPrompts.disabled = true;
+      if (waitMsg) waitMsg.classList.remove("hidden");
+    }
     return;
   }
 
   if (state.phase === "story") {
     showScreen(screenStory);
+    // round payload는 story:round 이벤트에서 갱신됨
     return;
   }
 
@@ -225,46 +171,49 @@ socket.on("room:state", (state) => {
     return;
   }
 
-  // fallback
-  enterLobby(state);
+  showScreen(screenWaiting);
+}
+
+// ---- Socket events ----
+socket.on("connect", () => {
+  console.log("connected:", socket.id);
 });
 
-// ---- Host actions ----
-btnCopy?.addEventListener("click", () => {
-  if (!app.roomId) return alertError("방 코드가 아직 없어.");
-  navigator.clipboard.writeText(String(app.roomId));
-  alert("방 코드가 복사되었습니다!");
+socket.on("disconnect", () => {
+  console.log("disconnected");
+  showScreen(screenLobby);
 });
 
-btnStart?.addEventListener("click", () => {
-  socket.emit("game:start");
+socket.on("room:state", (state) => {
+  console.log("room:state", state);
+  currentRoomState = state;
+  goByPhase(state);
 });
 
-// ---- Prompts ----
-btnSubmitPrompts?.addEventListener("click", () => {
-  const inputs = Array.from(document.querySelectorAll(".input-prompt"));
-  const prompts = inputs.map((i) => (i?.value ?? "").trim()).filter(Boolean);
-
-  if (prompts.length !== 3) return alertError("제시어 3개를 모두 입력해줘!");
-
-  if (btnSubmitPrompts) btnSubmitPrompts.disabled = true;
-  if (waitMsgPrompts) waitMsgPrompts.classList.remove("hidden");
-
-  socket.emit("prompt:submit", { prompts });
+socket.on("game:aborted", ({ reason }) => {
+  alertError(`게임이 중단됐어: ${reason}`);
+  showScreen(screenWaiting);
 });
 
-// ---- Story round payload ----
 socket.on("story:round", (payload) => {
   currentRoundPayload = payload;
+  const currentRound = payload.round ?? 0;
 
-  const roundIndex = payload?.round ?? 0;
-  const totalRounds = payload?.totalRounds ?? 0;
+  if (displayRound) displayRound.textContent = String(currentRound + 1);
+  if (displayTotalRounds) displayTotalRounds.textContent = String(payload.totalRounds ?? 0);
 
-  if (displayRound) displayRound.textContent = String(roundIndex + 1);
-  if (displayTotalRounds) displayTotalRounds.textContent = String(totalRounds);
+  renderPromptChips(myInboxPrompts, payload.inboxPrompts || []);
 
-  renderPromptChips(myInboxPrompts, payload?.inboxPrompts || []);
-  renderStorySoFar(payload?.chainEntries || []);
+  // 1라운드면 "지금까지 이야기" 영역 숨기기
+  if (currentRound === 0) {
+    if (storySoFar) {
+      storySoFar.innerHTML = "";
+      storySoFar.classList.add("hidden"); // CSS에 hidden이 display:none 이면 OK
+    }
+  } else {
+    if (storySoFar) storySoFar.classList.remove("hidden");
+    renderStorySoFar(payload.chainEntries || [], currentRound);
+  }
 
   if (inputStoryText) inputStoryText.value = "";
   if (btnSubmitStory) btnSubmitStory.disabled = false;
@@ -273,22 +222,97 @@ socket.on("story:round", (payload) => {
   showScreen(screenStory);
 });
 
-// ---- Submit story ----
-btnSubmitStory?.addEventListener("click", () => {
-  const text = inputStoryText?.value?.trim() ?? "";
-  if (!text) return alertError("문장을 입력해줘!");
-
-  if (btnSubmitStory) btnSubmitStory.disabled = true;
-  if (storyWaitMsg) storyWaitMsg.classList.remove("hidden");
-
-  socket.emit("story:submit", { text });
-});
-
-// ---- Results payload ----
 socket.on("game:result", (payload) => {
   renderFinalResults(payload);
   showScreen(screenResults);
 });
 
+// ---- Button handlers ----
+btnNext?.addEventListener("click", () => {
+  const trimmed = String(nicknameInput?.value || "").trim();
+  if (!trimmed) return alertError("닉네임을 입력해줘!");
+  myName = trimmed;
+  showScreen(screenLobby);
+});
+
+btnCreateRoom?.addEventListener("click", () => {
+  if (!myName) return alertError("먼저 닉네임을 입력해줘!");
+
+  socket.emit("room:create", { name: myName }, (res) => {
+    if (!res?.ok) return alertError(`방 생성 실패: ${res?.error || "UNKNOWN"}`);
+    if (res.state) {
+      currentRoomState = res.state;
+      goByPhase(res.state);
+    }
+  });
+});
+
+btnJoinRoom?.addEventListener("click", () => {
+  if (!myName) return alertError("먼저 닉네임을 입력해줘!");
+
+  const roomId = String(roomCodeInput?.value || "").trim();
+  if (!roomId) return alertError("방 코드를 입력해줘!");
+
+  socket.emit("room:join", { roomId, name: myName }, (res) => {
+    if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    if (res.state) {
+      currentRoomState = res.state;
+      goByPhase(res.state);
+    }
+  });
+});
+
+btnLeave?.addEventListener("click", () => {
+  socket.emit("room:leave", {}, (res) => {
+    if (!res?.ok) return alertError(`나가기 실패: ${res?.error || "UNKNOWN"}`);
+
+    if (displayRoomCode) displayRoomCode.textContent = "#----";
+    if (playerList) playerList.innerHTML = "";
+    if (roomCodeInput) roomCodeInput.value = "";
+
+    showScreen(screenLobby);
+  });
+});
+
+btnStart?.addEventListener("click", () => {
+  socket.emit("game:start", {}, (res) => {
+    if (!res?.ok) return alertError(`시작 실패: ${res?.error || "UNKNOWN"}`);
+  });
+});
+
+btnSubmitPrompts?.addEventListener("click", () => {
+  const inputs = Array.from(document.querySelectorAll(".input-prompt"));
+  const prompts = inputs.map((el) => String(el.value || "").trim()).filter(Boolean);
+
+  if (prompts.length !== 3) return alertError("제시어 3개를 모두 입력해줘!");
+
+  btnSubmitPrompts.disabled = true;
+  if (waitMsg) waitMsg.classList.remove("hidden");
+
+  socket.emit("prompt:submit", { prompts }, (res) => {
+    if (!res?.ok) {
+      btnSubmitPrompts.disabled = false;
+      if (waitMsg) waitMsg.classList.add("hidden");
+      return alertError(`제시어 제출 실패: ${res?.error || "UNKNOWN"}`);
+    }
+  });
+});
+
+btnSubmitStory?.addEventListener("click", () => {
+  const text = String(inputStoryText?.value || "").trim();
+  if (!text) return alertError("문장을 입력해줘!");
+
+  btnSubmitStory.disabled = true;
+  if (storyWaitMsg) storyWaitMsg.classList.remove("hidden");
+
+  socket.emit("story:submit", { text }, (res) => {
+    if (!res?.ok) {
+      btnSubmitStory.disabled = false;
+      if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
+      return alertError(`제출 실패: ${res?.error || "UNKNOWN"}`);
+    }
+  });
+});
+
 // ---- 초기 화면 ----
-showScreen(screenEntry);
+showScreen(screenName);
