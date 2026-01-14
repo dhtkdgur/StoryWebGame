@@ -1,3 +1,5 @@
+// script.js (full, fixed)
+
 const socket = io();
 
 // ---- DOM ----
@@ -11,21 +13,32 @@ const screenStory = $("screen-story");
 const screenResults = $("screen-results");
 
 const nicknameInput = $("input-nickname");
-const btnNext = $("btn-next");
+//const btnNext = $("btn-next");
 
+// entry buttons
 const btnCreateRoom = $("btn-create-room");
-const roomCodeInput = $("input-room-code");
 const btnJoinRoom = $("btn-join-room");
 
+// join screen
+const roomCodeInput = $("input-room-code");
+const btnJoin = $("btn-join"); // Go! 버튼 (중요)
+const hostControls = $("host-controls");
+const btnCopy = $("btn-copy");
+const waitMsgLobby = $("wait-msg-lobby");
+
+
+// lobby
 const displayRoomCode = $("display-room-code");
 const playerList = $("player-list");
 
 const btnLeave = $("btn-leave");
 const btnStart = $("btn-start");
 
+// prompts
 const btnSubmitPrompts = $("btn-submit-prompts");
 const waitMsg = $("wait-msg");
 
+// story
 const displayRound = $("display-round");
 const displayTotalRounds = $("display-total-rounds");
 const myInboxPrompts = $("my-inbox-prompts");
@@ -34,6 +47,7 @@ const inputStoryText = $("input-story-text");
 const btnSubmitStory = $("btn-submit-story");
 const storyWaitMsg = $("story-wait-msg");
 
+// results
 const finalResults = $("final-results");
 
 // ---- Local state ----
@@ -53,11 +67,22 @@ function alertError(msg) {
   alert(msg);
 }
 
+// 닉네임을 매번 안전하게 확보 (버튼 누르는 순간 읽어서 myName 갱신)
+function ensureName() {
+  const trimmed = String(nicknameInput?.value || "").trim();
+  if (!trimmed) {
+    alertError("닉네임을 입력해줘!");
+    return null;
+  }
+  myName = trimmed;
+  return myName;
+}
+
 function renderPlayers(players, hostId) {
   if (!playerList) return;
   playerList.innerHTML = "";
 
-  players.forEach((p) => {
+  (players || []).forEach((p) => {
     const div = document.createElement("div");
     div.className = "player-card";
     const isHost = p.id === hostId;
@@ -80,7 +105,7 @@ function renderPromptChips(container, items) {
 
 function renderStorySoFar(entries, round) {
   if (!storySoFar) return;
-  
+
   if (round === 0) {
     storySoFar.innerHTML = "";
     storySoFar.classList.add("hidden");
@@ -94,7 +119,7 @@ function renderStorySoFar(entries, round) {
     return;
   }
 
-  storySoFar.innerHTML = entries
+  storySoFar.innerHTML = (entries || [])
     .map((e) => `<div style="margin-bottom:8px;">${String(e.text || "")}</div>`)
     .join("");
 }
@@ -122,7 +147,7 @@ function renderFinalResults(payload) {
 
     const body = document.createElement("div");
     body.innerHTML = (chain.entries || [])
-      .map((e, idx) => `<div style="margin-bottom:8px;">${e.text}</div>`)
+      .map((e) => `<div style="margin-bottom:8px;">${String(e.text || "")}</div>`)
       .join("");
     wrap.appendChild(body);
 
@@ -136,14 +161,25 @@ function goByPhase(state) {
   if (displayRoomCode) displayRoomCode.textContent = `#${state.roomId}`;
   renderPlayers(state.players || [], state.hostId);
 
-  if (btnStart) {
-    btnStart.disabled = socket.id !== state.hostId;
-  }
+  
 
-  if (state.phase === "lobby") {
-    showScreen(screenWaiting);
-    return;
-  }
+  if (btnStart) btnStart.disabled = socket.id !== state.hostId;
+
+if (state.phase === "lobby") {
+  showScreen(screenLobby);
+
+  const isHost = socket.id === state.hostId;
+
+  // 방장/게스트 UI 토글
+  if (hostControls) hostControls.classList.toggle("hidden", !isHost);
+  if (waitMsgLobby) waitMsgLobby.classList.toggle("hidden", isHost);
+
+  // 방장만 시작 가능
+  if (btnStart) btnStart.disabled = !isHost;
+
+  return;
+}
+
 
   if (state.phase === "prompt") {
     showScreen(screenPrompts);
@@ -151,7 +187,6 @@ function goByPhase(state) {
     if (btnSubmitPrompts) btnSubmitPrompts.disabled = false;
     if (waitMsg) waitMsg.classList.add("hidden");
 
-    // 이미 제출한 사람은 버튼 잠그고 대기 메시지
     const me = (state.players || []).find((p) => p.id === socket.id);
     if (me?.submitted?.prompts) {
       if (btnSubmitPrompts) btnSubmitPrompts.disabled = true;
@@ -162,7 +197,6 @@ function goByPhase(state) {
 
   if (state.phase === "story") {
     showScreen(screenStory);
-    // round payload는 story:round 이벤트에서 갱신됨
     return;
   }
 
@@ -171,7 +205,8 @@ function goByPhase(state) {
     return;
   }
 
-  showScreen(screenWaiting);
+  // fallback
+  showScreen(screenLobby);
 }
 
 // ---- Socket events ----
@@ -181,7 +216,8 @@ socket.on("connect", () => {
 
 socket.on("disconnect", () => {
   console.log("disconnected");
-  showScreen(screenLobby);
+  // 연결 끊기면 안전하게 입장 화면으로
+  showScreen(screenName);
 });
 
 socket.on("room:state", (state) => {
@@ -192,7 +228,7 @@ socket.on("room:state", (state) => {
 
 socket.on("game:aborted", ({ reason }) => {
   alertError(`게임이 중단됐어: ${reason}`);
-  showScreen(screenWaiting);
+  showScreen(screenLobby);
 });
 
 socket.on("story:round", (payload) => {
@@ -204,11 +240,10 @@ socket.on("story:round", (payload) => {
 
   renderPromptChips(myInboxPrompts, payload.inboxPrompts || []);
 
-  // 1라운드면 "지금까지 이야기" 영역 숨기기
   if (currentRound === 0) {
     if (storySoFar) {
       storySoFar.innerHTML = "";
-      storySoFar.classList.add("hidden"); // CSS에 hidden이 display:none 이면 OK
+      storySoFar.classList.add("hidden");
     }
   } else {
     if (storySoFar) storySoFar.classList.remove("hidden");
@@ -228,15 +263,17 @@ socket.on("game:result", (payload) => {
 });
 
 // ---- Button handlers ----
-btnNext?.addEventListener("click", () => {
-  const trimmed = String(nicknameInput?.value || "").trim();
-  if (!trimmed) return alertError("닉네임을 입력해줘!");
-  myName = trimmed;
-  showScreen(screenLobby);
-});
 
+// (옵션) Next 버튼: 닉네임 저장하고 join 화면으로 이동
+//btnNext?.addEventListener("click", () => {
+ // if (!ensureName()) return;
+ // showScreen(screenWaiting);
+ // setTimeout(() => roomCodeInput?.focus(), 0);
+//});
+
+// 방 만들기: 닉네임 확인 후 바로 생성
 btnCreateRoom?.addEventListener("click", () => {
-  if (!myName) return alertError("먼저 닉네임을 입력해줘!");
+  if (!ensureName()) return;
 
   socket.emit("room:create", { name: myName }, (res) => {
     if (!res?.ok) return alertError(`방 생성 실패: ${res?.error || "UNKNOWN"}`);
@@ -247,8 +284,17 @@ btnCreateRoom?.addEventListener("click", () => {
   });
 });
 
+// 방 들어가기: 닉네임 확인 후 방 코드 입력 화면으로 이동만
 btnJoinRoom?.addEventListener("click", () => {
-  if (!myName) return alertError("먼저 닉네임을 입력해줘!");
+  if (!ensureName()) return;
+
+  showScreen(screenWaiting);
+  setTimeout(() => roomCodeInput?.focus(), 0);
+});
+
+// Go!: 실제 방 입장
+btnJoin?.addEventListener("click", () => {
+  if (!ensureName()) return;
 
   const roomId = String(roomCodeInput?.value || "").trim();
   if (!roomId) return alertError("방 코드를 입력해줘!");
@@ -270,7 +316,7 @@ btnLeave?.addEventListener("click", () => {
     if (playerList) playerList.innerHTML = "";
     if (roomCodeInput) roomCodeInput.value = "";
 
-    showScreen(screenLobby);
+    showScreen(screenName);
   });
 });
 
