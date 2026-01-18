@@ -49,6 +49,9 @@ function getRoom(roomId) {
   return r || null;
 }
 
+// ====================================================================
+// 상태 브로드캐스트
+
 // 프론트에 내려줄 방 상태 객체 생성
 function getRoomState(roomId) {
   const room = rooms[roomId];
@@ -82,7 +85,7 @@ function getRoomState(roomId) {
   return {
     roomId: room.roomId,
     hostId: room.hostId,
-    phase: room.phase,
+    phase: room.phase, // lobby | prompt | story | result
     players: playersArr,
     playerCount,
     promptSubmittedCount,
@@ -98,6 +101,8 @@ function emitRoomState(roomId) {
   if (!state) return;
   io.to(roomId).emit("room:state", state);
 }
+// ====================================================================
+// 게임 상태 객체 초기화
 
 // 게임 로직 함수들
 function ensureGame(room) {
@@ -111,6 +116,8 @@ function ensureGame(room) {
       storyChains: {},
       chainForPlayer: {},
       submittedStory: {},
+      usedCustomPromptSet: new Set(), // 커스텀 카드(플레이어 입력) 고유ID: sid_index
+      usedDefaultPromptSet: new Set(), // 기본 카드 고유ID: default_text
       timerInterval: null, // 타이머 interval ID
     };
   }
@@ -122,6 +129,7 @@ function resetForNewGame(room) {
   ensureGame(room);
 
   const ids = Object.keys(room.players);
+
   room.game.round = 0;
   room.game.turnOrder = ids.slice(); // 플레이어 순서 고정
   room.game.totalRounds = Math.max(1, ids.length);
@@ -131,7 +139,15 @@ function resetForNewGame(room) {
   room.game.storyChains = {};
   room.game.chainForPlayer = {};
   room.game.submittedStory = {};
+
   room.game.usedCustomPromptSet = new Set(); // 커스텀 카드만 게임 전체에서 추적
+  room.game.usedDefaultPromptSet = new Set(); // 기본 카드는 매 라운드 리필
+  
+  // 타이머 정리
+  if (room.game.timerInterval) {
+    clearInterval(room.game.timerInterval);
+    room.game.timerInterval = null;
+  }
 
   // 플레이어 상태 초기화
   for (const sid of ids) {
@@ -160,414 +176,6 @@ function allPromptsSubmitted(room) {
   if (ids.length === 0) return false;
   return ids.every((sid) => room.players[sid].submitted?.prompts);
 }
-
-// 제시어를 모아서 셔플 후 각 플레이어에게 분배
-// 라운드마다 호출되어 새로운 제시어를 뽑음
-// 커스텀 카드(플레이어가 낸 카드)는 게임 전체에서 한 번만 사용
-// 기본 카드는 매 라운드마다 리필됨 (한 라운드 내에서는 중복 X)
-// ====================================================================
-// 일단!!!!! 라운드마다 플레이어당 3장 고정 구성
-// - 기본 카드 1장
-// - 커스텀 카드 1장
-// - 호칭 카드 1장
-function assignPrompts(room) {
-  const ids = Object.keys(room.players);
-  const per = 3; // 플레이어당 카드 수
-  if (ids.length === 0) return;
-
-  // 게임 전체에서 사용된 커스텀 제시어 ID Set (기본 카드는 매 라운드 리필)
-  if (!room.game.usedCustomPromptSet) {
-    room.game.usedCustomPromptSet = new Set();
-  }
-  const usedCustomPromptSet = room.game.usedCustomPromptSet;
-
-  // ----- 풀 구성: 커스텀 / 기본 / 호칭 -----
-  const customPool = [];
-  const defaultPool = [];
-  const namePool = collectNameCardPool(room);
-
-  // 1. 커스텀 카드 수집 (게임 전체에서 한 번만 사용, 중복 작성하면 여러 장)
-  for (const sid of ids) {
-    const p = room.players[sid];
-    (p.prompts || []).forEach((textRaw, index) => {
-      const text = String(textRaw ?? "").trim();
-      if (!text) return;
-
-      // 카드 고유 ID 생성 (누가 냈는지 + 몇 번째 카드인지)
-      // 같은 텍스트여도 다른 인덱스면 다른 카드로 취급
-      const uniqueId = `${sid}_${index}`;
-      if (usedCustomPromptSet.has(uniqueId)) return;
-
-      customPool.push({ id: uniqueId, text: text, type: 'custom' });
-    });
-  }
-
-  // 2. 기본 카드 수집 (매 라운드 리필 - 한 라운드 내에서만 중복 방지)
-  for (const base of DEFAULT_PROMPTS) {
-    const text = String(base ?? "").trim();
-    if (!text) continue;
-    
-    const uniqueId = `default_${text}`;
-    defaultPool.push({ id: uniqueId, text: text, type: 'default' });
-  }
-
-  // 섞기
-  shuffle(customPool);
-  shuffle(defaultPool);
-  shuffle(namePool);
-
-  // 디버깅: 커스텀 풀 상태 확인
-  // console.log(
-  //   `[assignPrompts] 라운드 ${room.game.round}, 커스텀풀 크기: ${customPool.length}, 내용:`,
-  //   customPool.map(c => `${c.text}(${c.id})`).join(", ")
-  // );
-
-  // // ----- 전략: 커스텀 카드를 최대한 분배, 부족하면 기본으로 채우기 -----
-  // // 목표: 커스텀 카드 최우선으로 전부 분배하고, 필요하면 기본 카드로 채우기
-  
-  // console.log(`[assignPrompts 시작] 커스텀풀: ${customPool.length}, 기본풀: ${defaultPool.length}`);
-  
-  // 각 플레이어에게 분배
-  for (const sid of ids) {
-    const picked = [];
-
-    // 기본 1
-    const d = defaultPool.shift();
-    if (d) picked.push(d);
-
-    // 커스텀 1 (없으면 기본으로 대체)
-    let c = customPool.shift();
-    if (c) {
-      usedCustomPromptSet.add(c.id); // 커스텀은 게임 전체에서 1회만 사용
-      picked.push(c);
-    } else {
-      const d2 = defaultPool.shift();
-      if (d2) picked.push(d2);
-    }
-
-    // 이름 1 (없으면 기본으로 대체)
-    const n = namePool.shift();
-    if (n) {
-      picked.push(n);
-    } else {
-      const d3 = defaultPool.shift();
-      if (d3) picked.push(d3);
-    }
-
-    // 3장 못 채우면 기본으로 채움
-    while (picked.length < per && defaultPool.length > 0) {
-      picked.push(defaultPool.shift());
-    }
-    const finalPrompts = picked.map((card) => {
-      if (card.type === "default") return `기본: ${card.text}`;
-      if (card.type === "custom") return `커스텀: ${card.text}`;
-      if (card.type === "name") return `이름: ${card.text}`;
-      return card.text;
-    });
-
-    room.game.inboxPrompts[sid] = finalPrompts;
-    room.players[sid].inboxPrompts = finalPrompts;
-  }
-}
-// ====================================================================
-// 스토리 체인 계산 로직
-
-// 각 플레이어의 스토리 체인 초기화'
-function initStoryChains(room) {
-  const order = room.game.turnOrder;
-  room.game.storyChains = {};
-  for (const ownerId of order) {
-    room.game.storyChains[ownerId] = {
-      ownerId,
-      entries: [],
-    };
-  }
-}
-
-// 현재 라운드에서 플레이어가 맡을 체인 계산
-function computeChainForPlayer(room, playerId) {
-  const order = room.game.turnOrder;
-  const n = order.length;
-  const r = room.game.round;
-
-  const i = order.indexOf(playerId);
-  if (i === -1) return null;
-
-  // 라운드 r에서 player i가 맡을 체인의 ownerIndex = (i - r + n) % n
-  const ownerIndex = (i - r + n) % n;
-  const chainId = order[ownerIndex]; // chainId = ownerId
-  return chainId;
-}
-
-// 라운드 시작 처리
-function startRound(roomId) {
-  const room = getRoom(roomId);
-  if (!room) return;
-  if (room.phase !== "story") return;
-  if (!room.game) return;
-
-  // 라운드 1부터 제시어 분배 (라운드 0에는 분배 안 함)
-  if (room.game.round > 0) {
-    assignPrompts(room);
-  }
-
-  const order = room.game.turnOrder;
-  const round = room.game.round;
-
-  room.game.submittedStory[round] = new Set();
-
-  for (const sid of order) {
-    const chainId = computeChainForPlayer(room, sid);
-    if (!chainId) continue;
-
-    room.game.chainForPlayer[sid] = chainId;
-
-    const chain = room.game.storyChains[chainId];
-    let chainEntries = [];
-    if (chain?.entries && chain.entries.length > 0) {
-      const last = chain.entries[chain.entries.length - 1];
-      chainEntries = [{
-        round: last.round,
-        writerId: last.writerId,
-        text: last.text,
-      }];
-    }
-
-    io.to(sid).emit("story:round", {
-      roomId: room.roomId,
-      round: room.game.round,
-      totalRounds: room.game.totalRounds,
-      chainId,
-      chainOwnerId: chain?.ownerId || chainId,
-      chainEntries,
-      inboxPrompts: room.game.round === 0 ? [] : (room.game.inboxPrompts[sid] || []),
-    });
-
-    // player 제출 상태 초기화
-    room.players[sid].submitted.story = false;
-  }
-
-  emitRoomState(room.roomId);
-
-  // 타이머 시작 (20초)
-  const TIMER_DURATION = 20;
-  let secondsLeft = TIMER_DURATION;
-
-  // 기존 타이머가 있으면 정리
-  if (room.game.timerInterval) {
-    clearInterval(room.game.timerInterval);
-  }
-
-  // 타이머 매 초마다 실행
-  room.game.timerInterval = setInterval(() => {
-    secondsLeft--;
-
-    // 모든 플레이어에게 타이머 정보 전송
-    io.to(roomId).emit("story:timer", {
-      secondsLeft: Math.max(0, secondsLeft),
-    });
-
-    // 타이머 종료 시
-    if (secondsLeft <= 0) {
-      clearInterval(room.game.timerInterval);
-      room.game.timerInterval = null;
-
-      // 다음 라운드로 진행
-      const currentRoom = getRoom(roomId);
-      if (currentRoom && currentRoom.phase === "story") {
-        const nextRound = currentRoom.game.round + 1;
-        if (nextRound >= currentRoom.game.totalRounds) {
-          currentRoom.phase = "result";
-          emitRoomState(roomId);
-
-          const payload = buildResultPayload(currentRoom);
-          io.to(roomId).emit("game:result", payload);
-        } else {
-          currentRoom.game.round = nextRound;
-          startRound(roomId);
-        }
-      }
-    }
-  }, 1000);
-}
-
-// 결과 정리
-function buildResultPayload(room) {
-  const order = room.game.turnOrder;
-
-  const idToName = {};
-  for (const sid of order) {
-    idToName[sid] = room.players[sid]?.name || sid;
-  }
-
-  const chains = order.map((ownerId) => {
-    const chain = room.game.storyChains[ownerId];
-    return {
-      chainId: ownerId,
-      ownerId,
-      ownerName: idToName[ownerId],
-      entries: (chain?.entries || []).map((e) => ({
-        round: e.round,
-        writerId: e.writerId,
-        writerName: idToName[e.writerId] || e.writerId,
-        text: e.text,
-      })),
-    };
-  });
-
-  return { chains };
-}
-
-function abortGame(roomId, reason) {
-  const room = getRoom(roomId);
-  if (!room) return;
-
-  // 타이머 정리
-  if (room.game && room.game.timerInterval) {
-    clearInterval(room.game.timerInterval);
-    room.game.timerInterval = null;
-  }
-
-  if (room.phase !== "lobby") {
-    io.to(roomId).emit("game:aborted", { reason });
-  }
-
-  room.phase = "lobby";
-  room.game = null;
-
-  for (const sid of Object.keys(room.players)) {
-    room.players[sid].submitted = { prompts: false, story: false };
-    room.players[sid].prompts = [];
-    room.players[sid].inboxPrompts = [];
-  }
-
-  emitRoomState(roomId);
-}
-
-
-// ====================================================================
-// Socket.io 연결 처리
-io.on("connection", (socket) => {
-  console.log("connected:", socket.id);
-
-  // 방 생성 
-  socket.on("room:create", ({ name }, ack) => {
-    try {
-      const trimmed = String(name ?? "").trim();
-      if (!trimmed) return ack?.({ ok: false, error: "NAME_REQUIRED" });
-
-      const roomId = createRoomId();
-      rooms[roomId] = {
-        roomId,
-        hostId: socket.id,
-        phase: "lobby",
-        createdAt: Date.now(),
-        players: {},
-        game: null,
-      };
-
-      socket.join(roomId);
-      rooms[roomId].players[socket.id] = {
-        id: socket.id,
-        name: trimmed,
-        joinedAt: Date.now(),
-        submitted: { prompts: false, story: false },
-        prompts: [],
-        inboxPrompts: [],
-      };
-
-      socket.data.roomId = roomId;
-
-      ack?.({ ok: true, roomId, state: getRoomState(roomId) });
-      emitRoomState(roomId);
-    } catch (e) {
-      console.error(e);
-      ack?.({ ok: false, error: "SERVER_ERROR" });
-    }
-  });
-
-  // 방 참가 
-  socket.on("room:join", ({ roomId, name }, ack) => {
-    try {
-      const rid = String(roomId ?? "").trim();
-      const trimmed = String(name ?? "").trim();
-
-      if (!rid) return ack?.({ ok: false, error: "ROOM_ID_REQUIRED" });
-      if (!trimmed) return ack?.({ ok: false, error: "NAME_REQUIRED" });
-
-      const room = rooms[rid];
-      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
-      if (room.phase !== "lobby") return ack?.({ ok: false, error: "GAME_ALREADY_STARTED" });
-
-      socket.join(rid);
-      room.players[socket.id] = {
-        id: socket.id,
-        name: trimmed,
-        joinedAt: Date.now(),
-        submitted: { prompts: false, story: false },
-        prompts: [],
-        inboxPrompts: [],
-      };
-      socket.data.roomId = rid;
-
-      ack?.({ ok: true, roomId: rid, state: getRoomState(rid) });
-      emitRoomState(rid);
-    } catch (e) {
-      console.error(e);
-      ack?.({ ok: false, error: "SERVER_ERROR" });
-    }
-  });
-
-  // 방 나가기 
-  socket.on("room:leave", (_payload, ack) => {
-    const rid = socket.data.roomId;
-    if (!rid || !rooms[rid]) return ack?.({ ok: true });
-
-    const room = rooms[rid];
-    const wasInGame = room.phase !== "lobby";
-
-    delete room.players[socket.id];
-    socket.leave(rid);
-    socket.data.roomId = null;
-
-    if (Object.keys(room.players).length === 0) {
-      delete rooms[rid];
-      return ack?.({ ok: true });
-    }
-
-    if (room.hostId === socket.id) {
-      const nextHostId = Object.keys(room.players)[0];
-      room.hostId = nextHostId ?? null;
-    }
-
-    if (wasInGame) {
-      abortGame(rid, "PLAYER_LEFT");
-    } else {
-      emitRoomState(rid);
-    }
-
-    ack?.({ ok: true });
-  });
-
-  // 게임 시작
-  socket.on("game:start", (_payload, ack) => {
-    try {
-      const rid = socket.data.roomId;
-      const room = rid ? rooms[rid] : null;
-      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
-
-      if (socket.id !== room.hostId) return ack?.({ ok: false, error: "NOT_HOST" });
-      if (Object.keys(room.players).length < 2) return ack?.({ ok: false, error: "NEED_2_PLAYERS" });
-
-      resetForNewGame(room);
-      emitRoomState(rid);
-
-      ack?.({ ok: true });
-    } catch (e) {
-      console.error(e);
-      ack?.({ ok: false, error: "SERVER_ERROR" });
-    }
-  });
 
 // ====================================================================
 // 호칭 카드 생성
@@ -616,10 +224,436 @@ function collectNameCardPool(room) {
   return pool;
 }
 
+// ====================================================================
+// 제시어를 모아서 셔플 후 각 플레이어에게 분배
+// 라운드마다 호출되어 새로운 제시어를 뽑음
+// 커스텀 카드(플레이어가 낸 카드)는 게임 전체에서 한 번만 사용
+// 기본 카드는 매 라운드마다 리필됨 (한 라운드 내에서는 중복 X)
+// ====================================================================
+// 일단!!!!! 라운드마다 플레이어당 3장 고정 구성
+// - 기본 카드 1장
+// - 커스텀 카드 1장
+// - 호칭 카드 1장
+function assignPrompts(room) {
+  const ids = Object.keys(room.players);
+  if (ids.length === 0) return;
+
+  ensureGame(room);
+
+  const usedCustom = room.game.usedCustomPromptSet || new Set();
+  const usedDefault = room.game.usedDefaultPromptSet || new Set();
+
+  room.game.usedCustomPromptSet = usedCustom;
+  room.game.usedDefaultPromptSet = usedDefault;
+
+  // ----- 풀 구성: 커스텀 / 기본 / 호칭 -----
+  const customPool = [];
+  const defaultPool = [];
+  const namePool = collectNameCardPool(room);
+
+  // 1. 커스텀 카드 수집 (게임 전체에서 한 번만 사용, 중복 작성하면 여러 장)
+  for (const sid of ids) {
+    const p = room.players[sid];
+    (p.prompts || []).forEach((textRaw, index) => {
+      const text = String(textRaw ?? "").trim();
+      if (!text) return;
+
+      const uniqueId = `${sid}_${index}`;
+      if (usedCustom.has(uniqueId)) return;
+
+      customPool.push({ id: uniqueId, text, type: "custom" });
+    });
+  }
+
+  // 2. 기본 카드 수집 (매 라운드 리필 - 한 라운드 내에서만 중복 방지)
+    for (const base of DEFAULT_PROMPTS) {
+    const text = String(base ?? "").trim();
+    if (!text) continue;
+
+    const uniqueId = `default_${text}`;
+    if (usedDefault.has(uniqueId)) continue;
+
+    defaultPool.push({ id: uniqueId, text, type: "default" });
+  }
+
+  shuffle(customPool);
+  shuffle(defaultPool);
+  shuffle(namePool);
 
 
+  // 각 플레이어에게 분배
+  for (const sid of ids) {
+    const picked = [];
+
+    // 기본 1
+    const d = defaultPool.shift();
+    if (d) {
+      usedDefault.add(d.id);
+      picked.push(d);
+    }
+
+    // 커스텀 1 (없으면 기본으로 대체)
+    const c = customPool.shift();
+    if (c) {
+      usedCustom.add(c.id); // MVP: "분배되면 소진" (사용 여부 판정은 다음 단계)
+      picked.push(c);
+    } else {
+      const d2 = defaultPool.shift();
+      if (d2) {
+        usedDefault.add(d2.id);
+        picked.push(d2);
+      }
+    }
+
+    // 이름 1 (없으면 기본으로 대체)
+    const n = namePool.shift();
+    if (n) {
+      // used 처리 안 함!!!
+      picked.push(n);
+    } else {
+      const d3 = defaultPool.shift();
+      if (d3) {
+        usedDefault.add(d3.id);
+        picked.push(d3);
+      }
+    }
+
+    // 3장 못 채우면 기본으로 채움
+    while (picked.length < 3 && defaultPool.length > 0) {
+      const extra = defaultPool.shift();
+      if (!extra) break;
+      usedDefault.add(extra.id);
+      picked.push(extra);
+    }
+
+    const finalPrompts = picked.map((card) => {
+      if (card.type === "default") return `기본: ${card.text}`;
+      if (card.type === "custom") return `커스텀: ${card.text}`;
+      if (card.type === "name") return `이름: ${card.text}`;
+      return card.text;
+    });
+
+    room.game.inboxPrompts[sid] = finalPrompts;
+    room.players[sid].inboxPrompts = finalPrompts;
+  }
+}
+// ====================================================================
+// 스토리 체인 계산 로직
+
+// 각 플레이어의 스토리 체인 초기화'
+function initStoryChains(room) {
+  const order = room.game.turnOrder;
+  room.game.storyChains = {};
+  for (const ownerId of order) {
+    room.game.storyChains[ownerId] = {
+      ownerId,
+      entries: [],
+    };
+  }
+}
+
+// 현재 라운드에서 플레이어가 맡을 체인 계산
+function computeChainForPlayer(room, playerId) {
+  const order = room.game.turnOrder;
+  const n = order.length;
+  const r = room.game.round;
+
+  const i = order.indexOf(playerId);
+  if (i === -1) return null;
+
+  // 라운드 r에서 player i가 맡을 체인의 ownerIndex = (i - r + n) % n
+  const ownerIndex = (i - r + n) % n;
+  const chainId = order[ownerIndex]; // chainId = ownerId
+  return chainId;
+}
 
 // ====================================================================
+// 라운드 시작 처리 + 타이머
+
+function startRound(roomId) {
+  const room = getRoom(roomId);
+  if (!room) return;
+  if (room.phase !== "story") return;
+  if (!room.game) return;
+
+  // 라운드 시작 시마다 새로운 제시어 뽑기
+  assignPrompts(room);
+
+  const order = room.game.turnOrder;
+  const round = room.game.round;
+
+  room.game.submittedStory[round] = new Set();
+
+  for (const sid of order) {
+    const chainId = computeChainForPlayer(room, sid);
+    if (!chainId) continue;
+
+    room.game.chainForPlayer[sid] = chainId;
+
+    const chain = room.game.storyChains[chainId];
+    let chainEntries = [];
+    if (chain?.entries && chain.entries.length > 0) {
+      const last = chain.entries[chain.entries.length - 1];
+      chainEntries = [
+        {
+          round: last.round,
+          writerId: last.writerId,
+          text: last.text,
+        },
+      ];
+    }
+
+    io.to(sid).emit("story:round", {
+      roomId: room.roomId,
+      round: room.game.round,
+      totalRounds: room.game.totalRounds,
+      chainId,
+      chainOwnerId: chain?.ownerId || chainId,
+      chainEntries,
+      inboxPrompts: room.game.round === 0 ? [] : room.game.inboxPrompts[sid] || [],
+    });
+
+    // 플레이어 제출 상태 초기화
+    if (room.players[sid]) {
+      room.players[sid].submitted.story = false;
+    }
+  }
+
+  emitRoomState(room.roomId);
+
+  // ------------------------------------------------------------
+  // 라운드 타이머 (20초)
+  const TIMER_DURATION = 20;
+  let secondsLeft = TIMER_DURATION;
+
+  // 기존 타이머 정리
+  if (room.game.timerInterval) {
+    clearInterval(room.game.timerInterval);
+    room.game.timerInterval = null;
+  }
+
+  // 시작 즉시 1회 전송
+  io.to(roomId).emit("story:timer", { secondsLeft });
+
+  room.game.timerInterval = setInterval(() => {
+    secondsLeft -= 1;
+
+    io.to(roomId).emit("story:timer", {
+      secondsLeft: Math.max(0, secondsLeft),
+    });
+
+    if (secondsLeft <= 0) {
+      clearInterval(room.game.timerInterval);
+      room.game.timerInterval = null;
+
+      const currentRoom = getRoom(roomId);
+      if (!currentRoom || currentRoom.phase !== "story" || !currentRoom.game) return;
+
+      // 시간 종료 시: 다음 라운드 or 결과
+      const nextRound = currentRoom.game.round + 1;
+      if (nextRound >= currentRoom.game.totalRounds) {
+        currentRoom.phase = "result";
+        emitRoomState(roomId);
+
+        const payload = buildResultPayload(currentRoom);
+        io.to(roomId).emit("game:result", payload);
+      } else {
+        currentRoom.game.round = nextRound;
+        startRound(roomId);
+      }
+    }
+  }, 1000);
+  // ------------------------------------------------------------
+}
+
+// ====================================================================
+// 결과 정리
+
+function buildResultPayload(room) {
+  const order = room.game.turnOrder;
+
+  const idToName = {};
+  for (const sid of order) {
+    idToName[sid] = room.players[sid]?.name || sid;
+  }
+
+  const chains = order.map((ownerId) => {
+    const chain = room.game.storyChains[ownerId];
+    return {
+      chainId: ownerId,
+      ownerId,
+      ownerName: idToName[ownerId],
+      entries: (chain?.entries || []).map((e) => ({
+        round: e.round,
+        writerId: e.writerId,
+        writerName: idToName[e.writerId] || e.writerId,
+        text: e.text,
+      })),
+    };
+  });
+
+  return { chains };
+}
+
+// ====================================================================
+// 게임 중단 처리
+
+function abortGame(roomId, reason) {
+  const room = getRoom(roomId);
+  if (!room) return;
+
+  // 타이머 정리
+  if (room.game && room.game.timerInterval) {
+    clearInterval(room.game.timerInterval);
+    room.game.timerInterval = null;
+  }
+
+  if (room.phase !== "lobby") {
+    io.to(roomId).emit("game:aborted", { reason });
+  }
+
+  room.phase = "lobby";
+  room.game = null;
+
+  for (const sid of Object.keys(room.players)) {
+    room.players[sid].submitted = { prompts: false, story: false };
+    room.players[sid].prompts = [];
+    room.players[sid].inboxPrompts = [];
+  }
+
+  emitRoomState(roomId);
+}
+
+// ====================================================================
+// Socket.io 연결 처리
+
+io.on("connection", (socket) => {
+  console.log("connected:", socket.id);
+
+  // ------------------------------------------------------------
+  // 방 생성
+  socket.on("room:create", ({ name }, ack) => {
+    try {
+      const trimmed = String(name ?? "").trim();
+      if (!trimmed) return ack?.({ ok: false, error: "NAME_REQUIRED" });
+
+      const roomId = createRoomId();
+      rooms[roomId] = {
+        roomId,
+        hostId: socket.id,
+        phase: "lobby",
+        createdAt: Date.now(),
+        players: {},
+        game: null,
+      };
+
+      socket.join(roomId);
+      rooms[roomId].players[socket.id] = {
+        id: socket.id,
+        name: trimmed,
+        joinedAt: Date.now(),
+        submitted: { prompts: false, story: false },
+        prompts: [],
+        inboxPrompts: [],
+      };
+
+      socket.data.roomId = roomId;
+
+      ack?.({ ok: true, roomId, state: getRoomState(roomId) });
+      emitRoomState(roomId);
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 방 참가
+  socket.on("room:join", ({ roomId, name }, ack) => {
+    try {
+      const rid = String(roomId ?? "").trim();
+      const trimmed = String(name ?? "").trim();
+
+      if (!rid) return ack?.({ ok: false, error: "ROOM_ID_REQUIRED" });
+      if (!trimmed) return ack?.({ ok: false, error: "NAME_REQUIRED" });
+
+      const room = rooms[rid];
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+      if (room.phase !== "lobby") return ack?.({ ok: false, error: "GAME_ALREADY_STARTED" });
+
+      socket.join(rid);
+      room.players[socket.id] = {
+        id: socket.id,
+        name: trimmed,
+        joinedAt: Date.now(),
+        submitted: { prompts: false, story: false },
+        prompts: [],
+        inboxPrompts: [],
+      };
+      socket.data.roomId = rid;
+
+      ack?.({ ok: true, roomId: rid, state: getRoomState(rid) });
+      emitRoomState(rid);
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 방 나가기
+  socket.on("room:leave", (_payload, ack) => {
+    const rid = socket.data.roomId;
+    if (!rid || !rooms[rid]) return ack?.({ ok: true });
+
+    const room = rooms[rid];
+    const wasInGame = room.phase !== "lobby";
+
+    delete room.players[socket.id];
+    socket.leave(rid);
+    socket.data.roomId = null;
+
+    if (Object.keys(room.players).length === 0) {
+      delete rooms[rid];
+      return ack?.({ ok: true });
+    }
+
+    if (room.hostId === socket.id) {
+      const nextHostId = Object.keys(room.players)[0];
+      room.hostId = nextHostId ?? null;
+    }
+
+    if (wasInGame) {
+      abortGame(rid, "PLAYER_LEFT");
+    } else {
+      emitRoomState(rid);
+    }
+
+    ack?.({ ok: true });
+  });
+
+  // ------------------------------------------------------------
+  // 게임 시작
+  socket.on("game:start", (_payload, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+      if (socket.id !== room.hostId) return ack?.({ ok: false, error: "NOT_HOST" });
+      if (Object.keys(room.players).length < 2) return ack?.({ ok: false, error: "NEED_2_PLAYERS" });
+
+      resetForNewGame(room);
+      emitRoomState(rid);
+
+      ack?.({ ok: true });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
   // 제시어 제출
   socket.on("prompt:submit", ({ prompts }, ack) => {
     try {
@@ -636,7 +670,6 @@ function collectNameCardPool(room) {
 
       if (cleaned.length !== 3) return ack?.({ ok: false, error: "NEED_3_PROMPTS" });
 
-      //커스텀 제시어: 플레이어 단위로 저장
       p.prompts = cleaned;
       p.submitted.prompts = true;
 
@@ -649,7 +682,6 @@ function collectNameCardPool(room) {
       if (!allPromptsSubmitted(room)) return;
 
       // 모두 제출 완료 시 처리
-      // assignPrompts는 startRound에서 라운드마다 호출됨
       initStoryChains(room);
 
       room.phase = "story";
@@ -664,6 +696,7 @@ function collectNameCardPool(room) {
     }
   });
 
+  // ------------------------------------------------------------
   // 스토리 제출
   socket.on("story:submit", ({ text }, ack) => {
     try {
@@ -706,8 +739,15 @@ function collectNameCardPool(room) {
       emitRoomState(rid);
       ack?.({ ok: true });
 
-      const need = room.game.turnOrder.length;
+      // 모든 플레이어가 제출했는지 확인 (유령 플레이어 방지: 현재 players 기준)
+      const need = Object.keys(room.players).length;
       if (room.game.submittedStory[round].size < need) return;
+
+      // 타이머 정리(전원 제출로 라운드 종료)
+      if (room.game.timerInterval) {
+        clearInterval(room.game.timerInterval);
+        room.game.timerInterval = null;
+      }
 
       // 라운드 종료 -> 다음 라운드 or 결과
       const nextRound = round + 1;
@@ -728,24 +768,32 @@ function collectNameCardPool(room) {
     }
   });
 
-  // 연결 끊김 처리 
+  // ------------------------------------------------------------
+  // 연결 끊김 처리
   socket.on("disconnect", () => {
     const rid = socket.data.roomId;
-
     if (!rid || !rooms[rid]) return;
-    
-    // 플레이어 제거
-    delete rooms[rid].players[socket.id];
-    
+
+    const room = rooms[rid];
+    const wasInGame = room.phase !== "lobby";
+
+    delete room.players[socket.id];
+
     // 방장이 나갔으면 다른 사람을 방장으로
-    if (rooms[rid].hostId === socket.id) {
-      const nextHostId = Object.keys(rooms[rid].players)[0];
-      rooms[rid].hostId = nextHostId ?? null;
+    if (room.hostId === socket.id) {
+      const nextHostId = Object.keys(room.players)[0];
+      room.hostId = nextHostId ?? null;
     }
-    
+
     // 방 비었으면 삭제
-    if (Object.keys(rooms[rid].players).length === 0) {
+    if (Object.keys(room.players).length === 0) {
       delete rooms[rid];
+      return;
+    }
+
+    // 게임 중 이탈이면 중단 (turnOrder / 체인 꼬임 방지)
+    if (wasInGame) {
+      abortGame(rid, "PLAYER_LEFT");
       return;
     }
 
@@ -753,5 +801,7 @@ function collectNameCardPool(room) {
   });
 });
 
+// ====================================================================
+// 서버 실행
 const PORT = 3000;
 server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
