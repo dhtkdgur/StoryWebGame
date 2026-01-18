@@ -166,6 +166,10 @@ function allPromptsSubmitted(room) {
 // 커스텀 카드(플레이어가 낸 카드)는 게임 전체에서 한 번만 사용
 // 기본 카드는 매 라운드마다 리필됨 (한 라운드 내에서는 중복 X)
 // ====================================================================
+// 일단!!!!! 라운드마다 플레이어당 3장 고정 구성
+// - 기본 카드 1장
+// - 커스텀 카드 1장
+// - 호칭 카드 1장
 function assignPrompts(room) {
   const ids = Object.keys(room.players);
   const per = 3; // 플레이어당 카드 수
@@ -177,9 +181,10 @@ function assignPrompts(room) {
   }
   const usedCustomPromptSet = room.game.usedCustomPromptSet;
 
-  // ----- 풀 구성: 커스텀 / 기본 -----
+  // ----- 풀 구성: 커스텀 / 기본 / 호칭 -----
   const customPool = [];
   const defaultPool = [];
+  const namePool = collectNameCardPool(room);
 
   // 1. 커스텀 카드 수집 (게임 전체에서 한 번만 사용, 중복 작성하면 여러 장)
   for (const sid of ids) {
@@ -209,56 +214,56 @@ function assignPrompts(room) {
   // 섞기
   shuffle(customPool);
   shuffle(defaultPool);
+  shuffle(namePool);
 
   // 디버깅: 커스텀 풀 상태 확인
-  console.log(
-    `[assignPrompts] 라운드 ${room.game.round}, 커스텀풀 크기: ${customPool.length}, 내용:`,
-    customPool.map(c => `${c.text}(${c.id})`).join(", ")
-  );
+  // console.log(
+  //   `[assignPrompts] 라운드 ${room.game.round}, 커스텀풀 크기: ${customPool.length}, 내용:`,
+  //   customPool.map(c => `${c.text}(${c.id})`).join(", ")
+  // );
 
-  // ----- 전략: 커스텀 카드를 최대한 분배, 부족하면 기본으로 채우기 -----
-  // 목표: 커스텀 카드 최우선으로 전부 분배하고, 필요하면 기본 카드로 채우기
+  // // ----- 전략: 커스텀 카드를 최대한 분배, 부족하면 기본으로 채우기 -----
+  // // 목표: 커스텀 카드 최우선으로 전부 분배하고, 필요하면 기본 카드로 채우기
   
-  console.log(`[assignPrompts 시작] 커스텀풀: ${customPool.length}, 기본풀: ${defaultPool.length}`);
+  // console.log(`[assignPrompts 시작] 커스텀풀: ${customPool.length}, 기본풀: ${defaultPool.length}`);
   
   // 각 플레이어에게 분배
-  for (let playerIdx = 0; playerIdx < ids.length; playerIdx++) {
-    const sid = ids[playerIdx];
-    const sliceObjs = [];
-    
-    // 1단계: 커스텀 카드를 먼저 2개 분배
-    // 커스텀이 부족하면 일부 플레이어는 2개 못 받을 수 있음
-    for (let i = 0; i < 2 && customPool.length > 0; i++) {
-      sliceObjs.push(customPool.shift());
-    }
-    
-    console.log(`[분배] 플레이어 ${playerIdx}: 커스텀 ${sliceObjs.length}개 받음, 남은 커스텀풀: ${customPool.length}`);
-    
-    // 2단계: 부족한 만큼 기본 카드로 채우기
-    const needed = per - sliceObjs.length;
-    for (let i = 0; i < needed && defaultPool.length > 0; i++) {
-      sliceObjs.push(defaultPool.shift());
-    }
-    
-    console.log(`[분배] 플레이어 ${playerIdx}: 기본 ${needed}개 중 ${sliceObjs.length - (per - needed)}개 받음`);
+  for (const sid of ids) {
+    const picked = [];
 
-    // 3단계: 실제 데이터 처리
-    const finalPrompts = [];
-    for (const card of sliceObjs) {
-      // 커스텀 카드는 게임 전체에서 사용됨 표시
-      if (card.type === 'custom') {
-        usedCustomPromptSet.add(card.id);
-      }
-      // 플레이어에게는 텍스트만 전달
-      finalPrompts.push(card.text);
+    // 기본 1
+    const d = defaultPool.shift();
+    if (d) picked.push(d);
+
+    // 커스텀 1 (없으면 기본으로 대체)
+    let c = customPool.shift();
+    if (c) {
+      usedCustomPromptSet.add(c.id); // 커스텀은 게임 전체에서 1회만 사용
+      picked.push(c);
+    } else {
+      const d2 = defaultPool.shift();
+      if (d2) picked.push(d2);
     }
 
-    // 경고 로그
-    if (finalPrompts.length < per) {
-      console.warn(
-        `[assignPrompts] 플레이어 ${playerIdx}(${sid})에게 제시어 ${finalPrompts.length}개만 할당됨 (라운드 ${room.game.round}, 인원 ${ids.length}, 커스텀남음 ${customPool.length}, 기본남음 ${defaultPool.length})`
-      );
+    // 이름 1 (없으면 기본으로 대체)
+    const n = namePool.shift();
+    if (n) {
+      picked.push(n);
+    } else {
+      const d3 = defaultPool.shift();
+      if (d3) picked.push(d3);
     }
+
+    // 3장 못 채우면 기본으로 채움
+    while (picked.length < per && defaultPool.length > 0) {
+      picked.push(defaultPool.shift());
+    }
+    const finalPrompts = picked.map((card) => {
+      if (card.type === "default") return `기본: ${card.text}`;
+      if (card.type === "custom") return `커스텀: ${card.text}`;
+      if (card.type === "name") return `이름: ${card.text}`;
+      return card.text;
+    });
 
     room.game.inboxPrompts[sid] = finalPrompts;
     room.players[sid].inboxPrompts = finalPrompts;
@@ -267,7 +272,7 @@ function assignPrompts(room) {
 // ====================================================================
 // 스토리 체인 계산 로직
 
-// 각 플레이어의 스토리 체인 초기화
+// 각 플레이어의 스토리 체인 초기화'
 function initStoryChains(room) {
   const order = room.game.turnOrder;
   room.game.storyChains = {};
@@ -564,6 +569,57 @@ io.on("connection", (socket) => {
     }
   });
 
+// ====================================================================
+// 호칭 카드 생성
+// - 일단 카드 구성 확인할라고: 기본1 + 커스텀1 + 이름1 로 해놨슈
+// - 이/는/의...
+function buildNameCards(displayName) {
+  const base = String(displayName ?? "").trim();
+  if (!base) return [];
+
+  return [
+    `${base}(이)가`,
+    `${base}(이)는`,
+    `${base}(이)의`,
+    `${base}에게`,
+    `${base}(이)랑`,
+    `${base}(이)만의`,
+    `${base}(이) 때문에`,
+    `${base}(이)보다`,
+    `${base}(이)마저`,
+    `${base}(이) 말에 따르면`,
+    `킹 갓 제너럴 ${base}`,
+    `사랑에 빠진 ${base}`,
+    `똥 씹은 표정을 하는 ${base}`,
+  ];
+}
+
+// 방의 모든 플레이어 이름으로 호칭카드 만들기
+function collectNameCardPool(room) {
+  const ids = Object.keys(room.players || {});
+  const pool = [];
+
+  for (const sid of ids) {
+    const name = room.players[sid]?.name;
+    const cards = buildNameCards(name);
+
+    // 각 카드에 고유 id 부여
+    cards.forEach((text, idx) => {
+      pool.push({
+        id: `name_${sid}_${idx}`,
+        text,
+        type: "name",
+        ownerId: sid,
+      });
+    });
+  }
+  return pool;
+}
+
+
+
+
+// ====================================================================
   // 제시어 제출
   socket.on("prompt:submit", ({ prompts }, ack) => {
     try {
@@ -580,6 +636,7 @@ io.on("connection", (socket) => {
 
       if (cleaned.length !== 3) return ack?.({ ok: false, error: "NEED_3_PROMPTS" });
 
+      //커스텀 제시어: 플레이어 단위로 저장
       p.prompts = cleaned;
       p.submitted.prompts = true;
 
