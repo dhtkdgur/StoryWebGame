@@ -1,5 +1,3 @@
-// script.js (full, fixed)
-
 const socket = io();
 
 // ---- DOM ----
@@ -48,13 +46,27 @@ const btnSubmitStory = $("btn-submit-story");
 const storyWaitMsg = $("story-wait-msg");
 const displayTimer = $("display-timer");
 
-// results
-const finalResults = $("final-results");
+// results (갈틱폰 스타일)
+const storyTitle = $("story-title");
+const storyDisplay = $("story-display");
+const currentSentence = $("current-sentence");
+const sentenceWriter = $("sentence-writer");
+const storyProgress = $("story-progress");
+const progressText = $("progress-text");
+const btnPrev = $("btn-prev");
+const btnNextSentence = $("btn-next-sentence");
+const btnRestart = $("btn-restart");
 
 // ---- Local state ----
 let myName = "";
 let currentRoomState = null;
 let currentRoundPayload = null;
+
+// 결과 화면 상태
+let resultData = null;       // 전체 결과 데이터
+let resultHostId = null;     // 결과 화면의 방장 ID
+let currentChainIndex = 0;   // 현재 스토리 인덱스
+let currentEntryIndex = -1;  // 현재 문장 인덱스 (-1: 제목만 표시)
 
 // ---- UI helpers ----
 function showScreen(which) {
@@ -125,6 +137,39 @@ function renderPromptChips(container, items) {
 }
 
 // 제시어 텍스트 비교용 (앞부분 라벨 제거)
+
+// XSS 방지용 HTML escape
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// 문장 안에서 사용된 카드 키워드를 하이라이트
+function highlightKeywords(text, keywords) {
+  const raw = String(text ?? "");
+  const list = Array.isArray(keywords) ? keywords.filter(Boolean) : [];
+  if (list.length === 0) return escapeHtml(raw);
+
+  // 긴 키워드부터 먼저 치환(부분 겹침 최소화)
+  const sorted = [...new Set(list)].sort((a, b) => String(b).length - String(a).length);
+
+  let html = escapeHtml(raw);
+  for (const kw of sorted) {
+    const safeKw = escapeHtml(String(kw));
+    const re = new RegExp(escapeRegExp(safeKw), "g");
+    html = html.replace(re, `<span class="prompt-highlight">${safeKw}</span>`);
+  }
+  return html;
+}
+
 function normalizePromptText(labelText) {
   const s = String(labelText ?? "").trim();
   const idx = s.indexOf(":");
@@ -150,39 +195,210 @@ function renderStorySoFar(entries, round) {
   }
 
   storySoFar.innerHTML = (entries || [])
-    .map((e) => `<div style="margin-bottom:8px;">${String(e.text || "")}</div>`)
-    .join("");
+  .map((e) => {
+    const t = e?.text || "";
+    const kws = e?.usedKeywords || [];
+    return `<div style="margin-bottom:8px;">${highlightKeywords(t, kws)}</div>`;
+  })
+  .join("");
+
 }
 
-function renderFinalResults(payload) {
-  if (!finalResults) return;
-  finalResults.innerHTML = "";
+// 방장 여부 체크
+function isResultHost() {
+  return socket.id === resultHostId;
+}
+
+// 갈틱폰 스타일 결과 표시 함수들
+function initResultsPresentation(payload) {
+  resultData = payload;
+  resultHostId = payload?.hostId || null;
+  currentChainIndex = 0;
+  currentEntryIndex = -1;
 
   const chains = payload?.chains || [];
   if (chains.length === 0) {
-    finalResults.textContent = "결과가 없어.";
+    if (storyTitle) storyTitle.textContent = "결과가 없어요";
+    if (currentSentence) currentSentence.textContent = "";
+    if (sentenceWriter) sentenceWriter.textContent = "";
+    if (btnPrev) btnPrev.classList.add("hidden");
+    if (btnNextSentence) btnNextSentence.classList.add("hidden");
+    if (btnRestart) btnRestart.classList.remove("hidden");
     return;
   }
 
-  for (const chain of chains) {
-    const wrap = document.createElement("div");
-    wrap.className = "card";
-    wrap.style.width = "100%";
-    wrap.style.textAlign = "left";
-    wrap.style.marginBottom = "12px";
+  // 처음 상태 표시
+  updateResultsDisplay();
+}
 
-    const title = document.createElement("div");
-    title.innerHTML = `<h3 style="margin:0 0 8px 0;">${chain.ownerName}의 이야기</h3>`;
-    wrap.appendChild(title);
+function updateResultsDisplay() {
+  const chains = resultData?.chains || [];
+  if (chains.length === 0) return;
 
-    const body = document.createElement("div");
-    body.innerHTML = (chain.entries || [])
-      .map((e) => `<div style="margin-bottom:8px;">${String(e.text || "")}</div>`)
-      .join("");
-    wrap.appendChild(body);
+  const chain = chains[currentChainIndex];
+  const entries = chain?.entries || [];
+  const totalStories = chains.length;
+  const totalEntries = entries.length;
 
-    finalResults.appendChild(wrap);
+  // 제목 표시
+  if (storyTitle) {
+    storyTitle.textContent = `${chain.ownerName}의 이야기`;
+    // 애니메이션 트리거
+    storyTitle.style.animation = "none";
+    storyTitle.offsetHeight; // reflow
+    storyTitle.style.animation = "fadeIn 0.5s ease";
   }
+
+  // 문장 표시
+  if (currentEntryIndex === -1) {
+    // 제목만 표시 상태
+    if (currentSentence) {
+      currentSentence.textContent = "스토리를 시작합니다...";
+      currentSentence.style.animation = "none";
+      currentSentence.offsetHeight;
+      currentSentence.style.animation = "slideIn 0.4s ease";
+    }
+    if (sentenceWriter) sentenceWriter.textContent = "";
+  } else {
+    // 특정 문장 표시
+    const entry = entries[currentEntryIndex];
+    if (currentSentence) {
+      currentSentence.innerHTML = highlightKeywords(entry?.text || "", entry?.usedKeywords || []);
+      currentSentence.style.animation = "none";
+      currentSentence.offsetHeight;
+      currentSentence.style.animation = "slideIn 0.4s ease";
+    }
+    if (sentenceWriter) {
+      sentenceWriter.textContent = `- ${entry?.writerName || "알 수 없음"} -`;
+    }
+  }
+
+  // 진행 상황 표시
+  if (progressText) {
+    const storyNum = currentChainIndex + 1;
+    const sentenceNum = currentEntryIndex + 1;
+    if (currentEntryIndex === -1) {
+      progressText.textContent = `스토리 ${storyNum} / ${totalStories}`;
+    } else {
+      progressText.textContent = `스토리 ${storyNum} / ${totalStories} • 문장 ${sentenceNum} / ${totalEntries}`;
+    }
+  }
+
+  // 버튼 상태 업데이트
+  updateResultButtons();
+}
+
+function updateResultButtons() {
+  const chains = resultData?.chains || [];
+  const chain = chains[currentChainIndex];
+  const entries = chain?.entries || [];
+  const isFirstPosition = currentChainIndex === 0 && currentEntryIndex === -1;
+  const isLastPosition = currentChainIndex === chains.length - 1 && currentEntryIndex === entries.length - 1;
+  const isHost = isResultHost();
+
+  // 이전/다음 버튼은 방장만 표시
+  if (btnPrev) {
+    if (isHost) {
+      btnPrev.disabled = isFirstPosition;
+      btnPrev.classList.remove("hidden");
+    } else {
+      btnPrev.classList.add("hidden");
+    }
+  }
+
+  if (btnNextSentence) {
+    if (isHost) {
+      if (isLastPosition) {
+        btnNextSentence.textContent = "완료!";
+      } else {
+        btnNextSentence.textContent = "다음 →";
+      }
+      btnNextSentence.classList.remove("hidden");
+    } else {
+      btnNextSentence.classList.add("hidden");
+    }
+  }
+
+  // 다시하기 버튼 (마지막에만, 방장만 표시)
+  if (btnRestart) {
+    btnRestart.classList.toggle("hidden", !(isLastPosition && isHost));
+  }
+}
+
+function goNextInResults() {
+  // 방장만 조작 가능
+  if (!isResultHost()) return;
+
+  const chains = resultData?.chains || [];
+  if (chains.length === 0) return;
+
+  const chain = chains[currentChainIndex];
+  const entries = chain?.entries || [];
+
+  // 마지막 위치인지 체크
+  const isLastPosition = currentChainIndex === chains.length - 1 && currentEntryIndex === entries.length - 1;
+  if (isLastPosition) {
+    // 완료 상태
+    return;
+  }
+
+  // 다음으로 이동
+  let newChainIndex = currentChainIndex;
+  let newEntryIndex = currentEntryIndex;
+
+  if (currentEntryIndex < entries.length - 1) {
+    // 같은 스토리 내에서 다음 문장
+    newEntryIndex++;
+  } else {
+    // 다음 스토리로 이동
+    if (currentChainIndex < chains.length - 1) {
+      newChainIndex++;
+      newEntryIndex = -1; // 제목부터 시작
+    }
+  }
+
+  // 서버에 동기화 요청
+  socket.emit("result:navigate", { chainIndex: newChainIndex, entryIndex: newEntryIndex });
+}
+
+function goPrevInResults() {
+  // 방장만 조작 가능
+  if (!isResultHost()) return;
+
+  const chains = resultData?.chains || [];
+  if (chains.length === 0) return;
+
+  // 첫 위치인지 체크
+  if (currentChainIndex === 0 && currentEntryIndex === -1) {
+    return;
+  }
+
+  // 이전으로 이동
+  let newChainIndex = currentChainIndex;
+  let newEntryIndex = currentEntryIndex;
+
+  if (currentEntryIndex > -1) {
+    // 같은 스토리 내에서 이전 문장
+    newEntryIndex--;
+  } else {
+    // 이전 스토리의 마지막 문장으로 이동
+    if (currentChainIndex > 0) {
+      newChainIndex--;
+      const prevChain = chains[newChainIndex];
+      const prevEntries = prevChain?.entries || [];
+      newEntryIndex = prevEntries.length - 1;
+    }
+  }
+
+  // 서버에 동기화 요청
+  socket.emit("result:navigate", { chainIndex: newChainIndex, entryIndex: newEntryIndex });
+}
+
+// 서버에서 동기화 신호 받으면 화면 업데이트
+function syncResultsDisplay(chainIndex, entryIndex) {
+  currentChainIndex = chainIndex;
+  currentEntryIndex = entryIndex;
+  updateResultsDisplay();
 }
 
 function goByPhase(state) {
@@ -300,8 +516,18 @@ socket.on("story:timer", ({ secondsLeft }) => {
 });
 
 socket.on("game:result", (payload) => {
-  renderFinalResults(payload);
+  initResultsPresentation(payload);
   showScreen(screenResults);
+});
+
+// 결과 화면 동기화 (방장이 조작하면 모두에게 전파)
+socket.on("result:sync", ({ chainIndex, entryIndex }) => {
+  syncResultsDisplay(chainIndex, entryIndex);
+});
+
+// 다시하기 (방장이 누르면 모두 로비로)
+socket.on("game:restarted", () => {
+  showScreen(screenLobby);
 });
 
 // ---- Button handlers ----
@@ -403,9 +629,15 @@ btnCopy?.addEventListener("click", async () => {
 // 제시어 제출
 btnSubmitPrompts?.addEventListener("click", () => {
   const inputs = Array.from(document.querySelectorAll(".input-prompt"));
-  const prompts = inputs.map((el) => String(el.value || "").trim()).filter(Boolean);
-
-  if (prompts.length !== 3) return alertError("제시어 3개를 모두 입력해줘!");
+  const prompts = inputs.map((el) => {
+    const v = String(el.value || "").trim();
+    if (v) return v;
+    // 못 적은 경우: placeholder(예시)로 자동 채움
+    return String(el.placeholder || "").trim();
+  });
+ 
+  // 안전장치: placeholder도 비어있으면 에러
+  if (prompts.some((p) => !p)) return alertError("제시어 3개를 모두 입력해줘!");
 
   btnSubmitPrompts.disabled = true;
   if (waitMsg) waitMsg.classList.remove("hidden");
@@ -432,6 +664,38 @@ btnSubmitStory?.addEventListener("click", () => {
       if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
       return alertError(`제출 실패: ${res?.error || "UNKNOWN"}`);
     }
+  });
+});
+
+// 결과 화면 버튼 핸들러
+btnNextSentence?.addEventListener("click", () => {
+  goNextInResults();
+});
+
+btnPrev?.addEventListener("click", () => {
+  goPrevInResults();
+});
+
+// 키보드 네비게이션 (결과 화면에서, 방장만)
+document.addEventListener("keydown", (e) => {
+  if (screenResults?.classList.contains("hidden")) return;
+  if (!isResultHost()) return; // 방장만 키보드 조작 가능
+
+  if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    goNextInResults();
+  } else if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    goPrevInResults();
+  }
+});
+
+// 다시하기 버튼 (방장만)
+btnRestart?.addEventListener("click", () => {
+  if (!isResultHost()) return;
+
+  socket.emit("game:restart", {}, (res) => {
+    if (!res?.ok) return alertError(`다시하기 실패: ${res?.error || "UNKNOWN"}`);
   });
 });
 

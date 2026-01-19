@@ -117,7 +117,7 @@ function ensureGame(room) {
       chainForPlayer: {},
       submittedStory: {},
       usedCustomPromptSet: new Set(), // 커스텀 카드(플레이어 입력) 고유ID: sid_index
-      usedDefaultPromptSet: new Set(), // 기본 카드 고유ID: default_text
+      usedDefaultPromptSet: new Set(), // 기본 카드: 게임 전체에서 사용된 카드(등장하면 다음 라운드부터 제외)
       timerInterval: null, // 타이머 interval ID
       inboxPromptCards: {}, // sid -> 이번 라운드에 받은 카드 객체들(판정용)
     };
@@ -143,7 +143,7 @@ function resetForNewGame(room) {
   room.game.inboxPromptCards = {};
 
   room.game.usedCustomPromptSet = new Set(); // 커스텀 카드만 게임 전체에서 추적
-  room.game.usedDefaultPromptSet = new Set(); // 기본 카드는 매 라운드 리필
+  room.game.usedDefaultPromptSet = new Set(); // 기본 카드: 게임 전체에서 1회만 등장
   
   // 타이머 정리
   if (room.game.timerInterval) {
@@ -178,6 +178,20 @@ function allPromptsSubmitted(room) {
   if (ids.length === 0) return false;
   return ids.every((sid) => room.players[sid].submitted?.prompts);
 }
+
+const DEFAULT_SENTENCES_ROUND0 = [
+  "옛날 옛적에, 말도 안 되는 일이 시작됐다.",
+  "그날은 평범했는데, 갑자기 분위기가 이상해졌다.",
+  "아무도 예상 못 했지만, 사건은 이미 벌어졌다.",
+];
+
+const DEFAULT_SENTENCES_LATER = [
+  "그러자 상황은 더 이상해졌다.",
+  "그 순간, 모두가 얼어붙었다.",
+  "하지만 이야기는 멈추지 않았다.",
+];
+
+
 
 // ====================================================================
 // 호칭 카드 생성
@@ -221,7 +235,7 @@ function buildNameCards(displayName) {
     josa(base, "이 때문에", " 때문에"),
     josa(base, "이보다", "보다"),
     josa(base, "이마저", "마저"),
-    josa(base, "이 말에 따르면", "말에 따르면"),       
+    josa(base, "이 말에 따르면", " 말에 따르면"),      
     `킹 갓 제너럴 ${base}`,
     `사랑에 빠진 ${base}`,
     `똥 씹은 표정을 하는 ${base}`,
@@ -405,9 +419,8 @@ function startRound(roomId) {
   if (!room) return;
   if (room.phase !== "story") return;
   if (!room.game) return;
-
   if (room.game.round > 0) {
-    room.game.usedDefaultPromptSet = new Set(); // 기본카드: 라운드마다 리필(중복 방지용 Set 초기화)
+    // 라운드 1부터 카드 분배
     assignPrompts(room);
   }
 
@@ -431,6 +444,7 @@ function startRound(roomId) {
           round: last.round,
           writerId: last.writerId,
           text: last.text,
+          usedKeywords: last.usedKeywords || [],
         },
       ];
     }
@@ -481,6 +495,54 @@ function startRound(roomId) {
       const currentRoom = getRoom(roomId);
       if (!currentRoom || currentRoom.phase !== "story" || !currentRoom.game) return;
 
+      // 타임아웃: 미제출자 자동 제출 처리
+      const r = currentRoom.game.round;
+      const order = currentRoom.game.turnOrder;
+      const submittedSet = currentRoom.game.submittedStory?.[r] || new Set();
+
+      for (const sid of order) {
+        if (submittedSet.has(sid)) continue; // 이미 제출한 사람은 스킵
+
+        const chainId = currentRoom.game.chainForPlayer?.[sid];
+        const chain = chainId ? currentRoom.game.storyChains?.[chainId] : null;
+        if (!chain) continue;
+
+        // 라운드0이면 자유 시작 기본문장
+        if (r === 0) {
+          const base = DEFAULT_SENTENCES_ROUND0[Math.floor(Math.random() * DEFAULT_SENTENCES_ROUND0.length)];
+          chain.entries.push({ round: r, writerId: sid, text: base, usedKeywords: [] });
+        } else {
+          // 라운드1+면 "왼쪽 카드 1개"를 강제로 끼워넣는 버전
+          const prompts = currentRoom.game.inboxPrompts?.[sid] || [];
+          const first = prompts[0] ? String(prompts[0]) : "";
+          const keyword = first.includes(":") ? first.split(":").slice(1).join(":").trim() : first.trim();
+
+          const base = DEFAULT_SENTENCES_LATER[Math.floor(Math.random() * DEFAULT_SENTENCES_LATER.length)];
+          const autoText = keyword ? `${base} ${keyword}` : base;
+
+          const normalize = (s) => String(s || "").replace(/\s+/g, "");
+          const submittedText = normalize(autoText);
+
+          const cards = currentRoom.game.inboxPromptCards?.[sid] || [];
+          for (const card of cards) {
+            if (!card || card.type !== "custom") continue;
+            const key = normalize(card.text);
+            const used = key && submittedText.includes(key);
+            if (used) currentRoom.game.usedCustomPromptSet.add(card.id);
+          }
+          
+          const usedKeywords = getUsedKeywordsFromCards(autoText, cards);
+
+          chain.entries.push({ round: r, writerId: sid, text: autoText, usedKeywords });
+        }
+
+        submittedSet.add(sid);
+        if (currentRoom.players[sid]) currentRoom.players[sid].submitted.story = true;
+      }
+
+      currentRoom.game.submittedStory[r] = submittedSet;
+      emitRoomState(roomId);
+
       // 시간 종료 시: 다음 라운드 or 결과
       const nextRound = currentRoom.game.round + 1;
       if (nextRound >= currentRoom.game.totalRounds) {
@@ -495,7 +557,6 @@ function startRound(roomId) {
       }
     }
   }, 1000);
-  // ------------------------------------------------------------
 }
 
 // ====================================================================
@@ -520,11 +581,12 @@ function buildResultPayload(room) {
         writerId: e.writerId,
         writerName: idToName[e.writerId] || e.writerId,
         text: e.text,
+        usedKeywords: e.usedKeywords || [],
       })),
     };
   });
 
-  return { chains };
+  return { chains, hostId: room.hostId };
 }
 
 // ====================================================================
@@ -554,6 +616,29 @@ function abortGame(roomId, reason) {
   }
 
   emitRoomState(roomId);
+}
+
+
+// ====================================================================
+// 문장 내 카드 키워드 사용 여부 체크(하이라이트용)
+function normalizeNoSpace(s) {
+  return String(s || "").replace(/\s+/g, "");
+}
+
+function getUsedKeywordsFromCards(submittedText, cards) {
+  const text = normalizeNoSpace(submittedText);
+  const list = [];
+  const arr = Array.isArray(cards) ? cards : [];
+
+  for (const card of arr) {
+    if (!card || !card.text) continue;
+    const key = normalizeNoSpace(card.text);
+    if (!key) continue;
+    if (text.includes(key)) list.push(card.text);
+  }
+
+  // 중복 제거
+  return Array.from(new Set(list));
 }
 
 // ====================================================================
@@ -743,8 +828,7 @@ io.on("connection", (socket) => {
 
       const t = String(text ?? "").trim();
 
-      // -------------------------------
-      // 커스텀 카드 사용 여부 판정(제출 시점)
+      if (!t) return ack?.({ ok: false, error: "TEXT_REQUIRED" });
       if (room.game.round > 0) {
         const normalize = (s) => String(s || "").replace(/\s+/g, "");
         const submittedText = normalize(t);
@@ -762,9 +846,6 @@ io.on("connection", (socket) => {
         }
       }
 
-
-      if (!t) return ack?.({ ok: false, error: "TEXT_REQUIRED" });
-
       const round = room.game.round;
       const chainId = room.game.chainForPlayer[socket.id];
       if (!chainId) return ack?.({ ok: false, error: "CHAIN_NOT_ASSIGNED" });
@@ -780,10 +861,13 @@ io.on("connection", (socket) => {
       const chain = room.game.storyChains[chainId];
       if (!chain) return ack?.({ ok: false, error: "CHAIN_NOT_FOUND" });
 
+      const usedKeywords = getUsedKeywordsFromCards(t, room.game.inboxPromptCards?.[socket.id] || []);
+
       chain.entries.push({
         round,
         writerId: socket.id,
         text: t,
+        usedKeywords,
       });
 
       room.game.submittedStory[round].add(socket.id);
@@ -815,6 +899,61 @@ io.on("connection", (socket) => {
 
       room.game.round = nextRound;
       startRound(rid);
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+// ------------------------------------------------------------
+  // 결과 화면 네비게이션 (방장만 조작, 모두에게 동기화)
+  socket.on("result:navigate", ({ chainIndex, entryIndex }, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+      if (room.phase !== "result") return ack?.({ ok: false, error: "NOT_RESULT_PHASE" });
+      if (socket.id !== room.hostId) return ack?.({ ok: false, error: "NOT_HOST" });
+
+      // 모든 플레이어에게 현재 위치 브로드캐스트
+      io.to(rid).emit("result:sync", { chainIndex, entryIndex });
+      ack?.({ ok: true });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 다시하기 (방장이 누르면 모두 로비로 복귀)
+  socket.on("game:restart", (_payload, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+      if (socket.id !== room.hostId) return ack?.({ ok: false, error: "NOT_HOST" });
+
+      // 타이머 정리
+      if (room.game && room.game.timerInterval) {
+        clearInterval(room.game.timerInterval);
+        room.game.timerInterval = null;
+      }
+
+      // 로비로 복귀
+      room.phase = "lobby";
+      room.game = null;
+
+      for (const sid of Object.keys(room.players)) {
+        room.players[sid].submitted = { prompts: false, story: false };
+        room.players[sid].prompts = [];
+        room.players[sid].inboxPrompts = [];
+      }
+
+      // 모든 플레이어에게 로비 복귀 알림
+      io.to(rid).emit("game:restarted");
+      emitRoomState(rid);
+
+      ack?.({ ok: true });
     } catch (e) {
       console.error(e);
       ack?.({ ok: false, error: "SERVER_ERROR" });

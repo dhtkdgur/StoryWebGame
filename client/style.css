@@ -182,3 +182,124 @@ button:disabled {
   font-weight: bold;
   margin-top: 15px;
 }
+
+/* --------------------
+   Results (갈틱폰 스타일)
+-------------------- */
+.results-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 700px;
+  padding: 20px;
+}
+
+.story-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  text-align: center;
+  padding: 15px 30px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  animation: fadeIn 0.5s ease;
+}
+
+.story-display {
+  background: var(--card-bg);
+  padding: 40px;
+  border-radius: 20px;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.current-sentence {
+  font-size: 1.5rem;
+  line-height: 1.8;
+  text-align: center;
+  color: var(--text-white);
+  animation: slideIn 0.4s ease;
+}
+
+.sentence-writer {
+  margin-top: 20px;
+  font-size: 1rem;
+  color: var(--accent-blue);
+  font-weight: bold;
+}
+
+.story-progress {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.results-controls {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.control-btn {
+  padding: 12px 30px;
+  border-radius: 10px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s;
+  background: #475569;
+  color: white;
+  width: auto;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.98);
+}
+
+.control-btn.primary {
+  background: var(--accent-blue);
+}
+
+.control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#btn-restart {
+  margin-top: 20px;
+  background: var(--accent-yellow);
+  color: #000;
+  padding: 15px 40px;
+  font-size: 1.1rem;
+  width: auto;
+}
+
+.prompt-highlight {
+  color: var(--accent-yellow);
+  font-weight: 900;
+  text-decoration: underline;
+}
+
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
