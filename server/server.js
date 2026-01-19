@@ -13,7 +13,16 @@ const io = new Server(server, {
   cors: {
     origin: true,
     methods: ["GET", "POST"],
+    credentials: true,
   },
+});
+
+// Express 미들웨어: CORS 헤더 설정
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
 });
 
 // client 폴더의 index.html, css, js 제공

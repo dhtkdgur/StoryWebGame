@@ -184,60 +184,85 @@ button:disabled {
 }
 
 /* --------------------
-   Results (갈틱폰 스타일)
+   Results (채팅방 스타일)
 -------------------- */
 .results-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   width: 100%;
   max-width: 700px;
   padding: 20px;
 }
 
 .story-title {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: bold;
   color: var(--accent-yellow);
   text-align: center;
-  padding: 15px 30px;
+  padding: 12px 25px;
   background: var(--card-bg);
   border-radius: 15px;
   animation: fadeIn 0.5s ease;
 }
 
-.story-display {
-  background: var(--card-bg);
-  padding: 40px;
-  border-radius: 20px;
-  width: 100%;
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-}
-
-.current-sentence {
-  font-size: 1.5rem;
-  line-height: 1.8;
-  text-align: center;
-  color: var(--text-white);
-  animation: slideIn 0.4s ease;
-}
-
-.sentence-writer {
-  margin-top: 20px;
-  font-size: 1rem;
-  color: var(--accent-blue);
-  font-weight: bold;
-}
-
 .story-progress {
   font-size: 0.9rem;
   color: #94a3b8;
+}
+
+/* 채팅 컨테이너 */
+.chat-container {
+  background: var(--card-bg);
+  border-radius: 20px;
+  width: 100%;
+  min-height: 350px;
+  max-height: 450px;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 채팅 메시지 */
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  animation: chatPopIn 0.4s ease;
+}
+
+.chat-writer {
+  font-size: 0.8rem;
+  color: var(--accent-blue);
+  font-weight: bold;
+  margin-bottom: 4px;
+  padding-left: 5px;
+}
+
+.chat-bubble {
+  background: #475569;
+  padding: 12px 16px;
+  border-radius: 15px;
+  border-top-left-radius: 5px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-white);
+  max-width: 85%;
+  word-break: break-word;
+}
+
+@keyframes chatPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .results-controls {
@@ -276,6 +301,15 @@ button:disabled {
   transform: none;
 }
 
+.control-btn.screenshot {
+  background: #10b981;
+  color: white;
+}
+
+.control-btn.screenshot:hover {
+  background: #059669;
+}
+
 #btn-restart {
   margin-top: 20px;
   background: var(--accent-yellow);
@@ -291,6 +325,181 @@ button:disabled {
   text-decoration: underline;
 }
 
+
+/* --------------------
+   Player Status (작성 상태 표시)
+-------------------- */
+.player-status-container {
+  margin-top: 15px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.player-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.player-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #475569;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.player-status-item .status-icon {
+  font-size: 1rem;
+}
+
+.player-status-item.writing .status-icon {
+  color: #fbbf24;
+  animation: blink 1s infinite;
+}
+
+.player-status-item.done .status-icon {
+  color: #34d399;
+}
+
+.player-status-item.done {
+  opacity: 0.7;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* --------------------
+   Emoji (이모티콘)
+-------------------- */
+.emoji-section {
+  margin-top: 15px;
+  position: relative;
+}
+
+.emoji-toggle-btn {
+  width: auto;
+  padding: 8px 16px;
+  background: #475569;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.emoji-toggle-btn:hover {
+  background: #64748b;
+}
+
+.emoji-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 15px;
+  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  min-width: 200px;
+}
+
+.emoji-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.emoji-btn {
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  font-size: 1.8rem;
+  background: #475569;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.emoji-btn:hover {
+  background: #64748b;
+  transform: scale(1.1);
+}
+
+.emoji-btn img {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+}
+
+/* 받은 이모티콘 표시 영역 */
+.emoji-display {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.emoji-floating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: emojiFloat 3s ease-out forwards;
+}
+
+.emoji-floating .emoji-icon {
+  font-size: 3rem;
+}
+
+.emoji-floating .emoji-icon img {
+  width: 60px;
+  height: 60px;
+}
+
+.emoji-floating .emoji-sender {
+  font-size: 0.8rem;
+  color: var(--accent-yellow);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
+@keyframes emojiFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.5);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2);
+  }
+  20% {
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-50px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100px);
+  }
+}
 
 /* 애니메이션 */
 @keyframes fadeIn {

@@ -100,31 +100,47 @@
         </div>
 
         <button id="btn-submit-story" style="margin-top: 10px;">제출</button>
+
+        <!-- 플레이어 작성 상태 표시 -->
+        <div id="player-status-container" class="player-status-container">
+          <p class="subtitle">플레이어 상태</p>
+          <div id="player-status-list" class="player-status-list"></div>
+        </div>
+
+        <!-- 이모티콘 버튼 -->
+        <div class="emoji-section">
+          <button id="btn-emoji-toggle" class="emoji-toggle-btn">😊 이모티콘</button>
+          <div id="emoji-picker" class="emoji-picker hidden">
+            <div id="emoji-list" class="emoji-list"></div>
+          </div>
+        </div>
+
+        <!-- 받은 이모티콘 표시 -->
+        <div id="emoji-display" class="emoji-display"></div>
+
         <p id="story-wait-msg" class="hidden">다른 플레이어들을 기다리는 중...</p>
       </div>
     </section>
 
-    <!-- 6. 결과 (갈틱폰 스타일) -->
+    <!-- 6. 결과 (채팅방 스타일) -->
     <section id="screen-results" class="screen hidden">
       <div class="results-container">
         <!-- 스토리 제목 -->
         <div id="story-title" class="story-title"></div>
-
-        <!-- 문장 표시 영역 -->
-        <div id="story-display" class="story-display">
-          <div id="current-sentence" class="current-sentence"></div>
-          <div id="sentence-writer" class="sentence-writer"></div>
-        </div>
 
         <!-- 진행 표시 -->
         <div id="story-progress" class="story-progress">
           <span id="progress-text"></span>
         </div>
 
+        <!-- 채팅방 스타일 문장 표시 영역 -->
+        <div id="chat-container" class="chat-container"></div>
+
         <!-- 컨트롤 버튼 -->
         <div class="results-controls">
-          <button id="btn-prev" class="control-btn">← 이전</button>
-          <button id="btn-next-sentence" class="control-btn primary">다음 →</button>
+          <button id="btn-prev" class="control-btn">← 이전 스토리</button>
+          <button id="btn-next-story" class="control-btn primary">다음 스토리 →</button>
+          <button id="btn-screenshot" class="control-btn primary">📸 저장</button>
         </div>
 
         <!-- 다시하기 버튼 (마지막에만, 방장만 표시) -->
@@ -135,6 +151,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNnt5bLNrHSCJoQzChvDKDzhKKj7KLwR1YYu5/auhyXd0KeN7Xe3RkN9hPpqHNGMaEjRKQO9VFKQFuaZ2yJSzA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="script.js"></script>
 </body>
 </html>

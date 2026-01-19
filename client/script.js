@@ -46,27 +46,42 @@ const btnSubmitStory = $("btn-submit-story");
 const storyWaitMsg = $("story-wait-msg");
 const displayTimer = $("display-timer");
 
-// results (갈틱폰 스타일)
+// results (채팅방 스타일)
 const storyTitle = $("story-title");
-const storyDisplay = $("story-display");
-const currentSentence = $("current-sentence");
-const sentenceWriter = $("sentence-writer");
+const chatContainer = $("chat-container");
 const storyProgress = $("story-progress");
 const progressText = $("progress-text");
 const btnPrev = $("btn-prev");
-const btnNextSentence = $("btn-next-sentence");
+const btnNextStory = $("btn-next-story");
 const btnRestart = $("btn-restart");
+const btnScreenshot = $("btn-screenshot");
+
+// player status (작성 상태)
+const playerStatusList = $("player-status-list");
+
+// emoji (이모티콘)
+const btnEmojiToggle = $("btn-emoji-toggle");
+const emojiPicker = $("emoji-picker");
+const emojiList = $("emoji-list");
+const emojiDisplay = $("emoji-display");
 
 // ---- Local state ----
 let myName = "";
 let currentRoomState = null;
 let currentRoundPayload = null;
+let isWriting = false; // 작성 중 상태
+let writingTimeout = null; // 작성 중 타이머
 
 // 결과 화면 상태
 let resultData = null;       // 전체 결과 데이터
 let resultHostId = null;     // 결과 화면의 방장 ID
 let currentChainIndex = 0;   // 현재 스토리 인덱스
-let currentEntryIndex = -1;  // 현재 문장 인덱스 (-1: 제목만 표시)
+let chatAnimationTimer = null; // 채팅 애니메이션 타이머
+let displayedEntryCount = 0;   // 현재 표시된 문장 수
+
+// TTS 관련
+let ttsEnabled = true;       // TTS 활성화 여부
+let currentUtterance = null; // 현재 재생 중인 TTS
 
 // ---- UI helpers ----
 function showScreen(which) {
@@ -124,6 +139,138 @@ function renderPlayers(players, hostId) {
   });
 }
 
+// 플레이어 작성 상태 렌더링 (스토리 화면에서 사용)
+function renderPlayerStatus(players, writingStatus) {
+  if (!playerStatusList) return;
+  playerStatusList.innerHTML = "";
+
+  (players || []).forEach((p) => {
+    const div = document.createElement("div");
+    const isDone = p.submitted?.story === true;
+    const isWritingNow = writingStatus?.[p.id] === true;
+
+    div.className = `player-status-item ${isDone ? "done" : (isWritingNow ? "writing" : "")}`;
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "status-icon";
+
+    if (isDone) {
+      iconSpan.textContent = "✓";
+    } else if (isWritingNow) {
+      iconSpan.textContent = "...";
+    } else {
+      iconSpan.textContent = "○";
+    }
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = p.name;
+
+    div.appendChild(iconSpan);
+    div.appendChild(nameSpan);
+    playerStatusList.appendChild(div);
+  });
+}
+
+// ---- 이모티콘 관련 ----
+// 이모티콘 목록 (나중에 커스텀 이미지로 교체 가능)
+// type: "emoji" = 기본 이모지, "image" = 커스텀 이미지
+const EMOJI_LIST = [
+  { id: "laugh", type: "emoji", content: "😂" },
+  { id: "heart", type: "emoji", content: "❤️" },
+  { id: "thumbsup", type: "emoji", content: "👍" },
+  { id: "clap", type: "emoji", content: "👏" },
+  { id: "fire", type: "emoji", content: "🔥" },
+  { id: "thinking", type: "emoji", content: "🤔" },
+  { id: "cry", type: "emoji", content: "😭" },
+  { id: "surprise", type: "emoji", content: "😱" },
+  // 커스텀 이미지 예시 (나중에 추가):
+  // { id: "custom1", type: "image", content: "/images/emoji/custom1.png" },
+];
+
+// 이모티콘 목록 렌더링
+function renderEmojiList() {
+  if (!emojiList) return;
+  emojiList.innerHTML = "";
+
+  for (const emoji of EMOJI_LIST) {
+    const btn = document.createElement("button");
+    btn.className = "emoji-btn";
+    btn.dataset.emojiId = emoji.id;
+
+    if (emoji.type === "image") {
+      const img = document.createElement("img");
+      img.src = emoji.content;
+      img.alt = emoji.id;
+      btn.appendChild(img);
+    } else {
+      btn.textContent = emoji.content;
+    }
+
+    btn.addEventListener("click", () => {
+      sendEmoji(emoji.id);
+      toggleEmojiPicker(false);
+    });
+
+    emojiList.appendChild(btn);
+  }
+}
+
+// 페이지 로드 시 이모티콘 목록 초기화
+document.addEventListener("DOMContentLoaded", () => {
+  renderEmojiList();
+});
+
+// 이모티콘 선택창 토글
+function toggleEmojiPicker(show) {
+  if (!emojiPicker) return;
+  if (show === undefined) {
+    emojiPicker.classList.toggle("hidden");
+  } else {
+    emojiPicker.classList.toggle("hidden", !show);
+  }
+}
+
+// 이모티콘 전송
+function sendEmoji(emojiId) {
+  socket.emit("emoji:send", { emojiId });
+}
+
+// 받은 이모티콘 표시
+function displayReceivedEmoji(senderName, emojiId) {
+  if (!emojiDisplay) return;
+
+  const emoji = EMOJI_LIST.find(e => e.id === emojiId);
+  if (!emoji) return;
+
+  const container = document.createElement("div");
+  container.className = "emoji-floating";
+
+  const iconDiv = document.createElement("div");
+  iconDiv.className = "emoji-icon";
+
+  if (emoji.type === "image") {
+    const img = document.createElement("img");
+    img.src = emoji.content;
+    img.alt = emojiId;
+    iconDiv.appendChild(img);
+  } else {
+    iconDiv.textContent = emoji.content;
+  }
+
+  const senderDiv = document.createElement("div");
+  senderDiv.className = "emoji-sender";
+  senderDiv.textContent = senderName;
+
+  container.appendChild(iconDiv);
+  container.appendChild(senderDiv);
+  emojiDisplay.appendChild(container);
+
+  // 3초 후 제거
+  setTimeout(() => {
+    container.remove();
+  }, 3000);
+}
+
 function renderPromptChips(container, items) {
   if (!container) return;
   container.innerHTML = "";
@@ -177,6 +324,71 @@ function normalizePromptText(labelText) {
   return s.slice(idx + 1).trim();
 }
 
+// ---- TTS 함수 ----
+function stopTTS() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  currentUtterance = null;
+}
+
+// 한국어 음성 찾기 (캐싱)
+let cachedKoreanVoice = null;
+function getKoreanVoice() {
+  if (cachedKoreanVoice) return cachedKoreanVoice;
+  
+  try {
+    const voices = window.speechSynthesis?.getVoices() || [];
+    const koreanVoice = voices.find(v => v.lang.startsWith("ko"));
+    if (koreanVoice) {
+      cachedKoreanVoice = koreanVoice;
+      return koreanVoice;
+    }
+  } catch (e) {
+    console.error("음성 로드 중 오류:", e);
+  }
+  return null;
+}
+
+function speakText(text) {
+  if (!ttsEnabled || !text) return;
+  if (!window.speechSynthesis) {
+    console.warn("이 브라우저는 TTS를 지원하지 않습니다.");
+    return;
+  }
+
+  // 이전 TTS 중지
+  stopTTS();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 1.0;  // 속도 (0.1 ~ 10)
+  utterance.pitch = 1.0; // 피치 (0 ~ 2)
+  utterance.volume = 1.0; // 볼륨 (0 ~ 1)
+
+  // 한국어 음성 설정
+  const koreanVoice = getKoreanVoice();
+  if (koreanVoice) {
+    utterance.voice = koreanVoice;
+  }
+
+  currentUtterance = utterance;
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error("TTS 재생 중 오류:", e);
+  }
+}
+
+// 음성 목록 로드 (일부 브라우저에서 필요)
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    // 캐시 초기화하여 다시 로드되도록
+    cachedKoreanVoice = null;
+    getKoreanVoice();
+  };
+}
+
 
 function renderStorySoFar(entries, round) {
   if (!storySoFar) return;
@@ -209,196 +421,218 @@ function isResultHost() {
   return socket.id === resultHostId;
 }
 
-// 갈틱폰 스타일 결과 표시 함수들
+// 채팅 애니메이션 정지
+function stopChatAnimation() {
+  if (chatAnimationTimer) {
+    clearTimeout(chatAnimationTimer);
+    chatAnimationTimer = null;
+  }
+}
+
+// 채팅방 스타일 결과 표시 함수들
 function initResultsPresentation(payload) {
   resultData = payload;
   resultHostId = payload?.hostId || null;
   currentChainIndex = 0;
-  currentEntryIndex = -1;
+  displayedEntryCount = 0;
+
+  // 이전 TTS, 애니메이션 중지
+  stopTTS();
+  stopChatAnimation();
 
   const chains = payload?.chains || [];
   if (chains.length === 0) {
     if (storyTitle) storyTitle.textContent = "결과가 없어요";
-    if (currentSentence) currentSentence.textContent = "";
-    if (sentenceWriter) sentenceWriter.textContent = "";
+    if (chatContainer) chatContainer.innerHTML = "";
     if (btnPrev) btnPrev.classList.add("hidden");
-    if (btnNextSentence) btnNextSentence.classList.add("hidden");
+    if (btnNextStory) btnNextStory.classList.add("hidden");
     if (btnRestart) btnRestart.classList.remove("hidden");
     return;
   }
 
-  // 처음 상태 표시
-  updateResultsDisplay();
+  // 첫 스토리 표시 시작
+  displayStory(0);
 }
 
-function updateResultsDisplay() {
-  const chains = resultData?.chains || [];
-  if (chains.length === 0) return;
+// 특정 스토리 표시 (채팅방 스타일로 문장 순차 표시)
+function displayStory(chainIndex) {
+  stopTTS();
+  stopChatAnimation();
 
-  const chain = chains[currentChainIndex];
-  const entries = chain?.entries || [];
+  currentChainIndex = chainIndex;
+  displayedEntryCount = 0;
+
+  const chains = resultData?.chains || [];
+  const chain = chains[chainIndex];
+  if (!chain) return;
+
+  const entries = chain.entries || [];
   const totalStories = chains.length;
-  const totalEntries = entries.length;
 
   // 제목 표시
   if (storyTitle) {
     storyTitle.textContent = `${chain.ownerName}의 이야기`;
-    // 애니메이션 트리거
     storyTitle.style.animation = "none";
-    storyTitle.offsetHeight; // reflow
+    storyTitle.offsetHeight;
     storyTitle.style.animation = "fadeIn 0.5s ease";
-  }
-
-  // 문장 표시
-  if (currentEntryIndex === -1) {
-    // 제목만 표시 상태
-    if (currentSentence) {
-      currentSentence.textContent = "스토리를 시작합니다...";
-      currentSentence.style.animation = "none";
-      currentSentence.offsetHeight;
-      currentSentence.style.animation = "slideIn 0.4s ease";
-    }
-    if (sentenceWriter) sentenceWriter.textContent = "";
-  } else {
-    // 특정 문장 표시
-    const entry = entries[currentEntryIndex];
-    if (currentSentence) {
-      currentSentence.innerHTML = highlightKeywords(entry?.text || "", entry?.usedKeywords || []);
-      currentSentence.style.animation = "none";
-      currentSentence.offsetHeight;
-      currentSentence.style.animation = "slideIn 0.4s ease";
-    }
-    if (sentenceWriter) {
-      sentenceWriter.textContent = `- ${entry?.writerName || "알 수 없음"} -`;
-    }
   }
 
   // 진행 상황 표시
   if (progressText) {
-    const storyNum = currentChainIndex + 1;
-    const sentenceNum = currentEntryIndex + 1;
-    if (currentEntryIndex === -1) {
-      progressText.textContent = `스토리 ${storyNum} / ${totalStories}`;
-    } else {
-      progressText.textContent = `스토리 ${storyNum} / ${totalStories} • 문장 ${sentenceNum} / ${totalEntries}`;
-    }
+    progressText.textContent = `스토리 ${chainIndex + 1} / ${totalStories}`;
   }
 
-  // 버튼 상태 업데이트
-  updateResultButtons();
+  // 채팅 컨테이너 초기화
+  if (chatContainer) {
+    chatContainer.innerHTML = "";
+  }
+
+  // 버튼 상태 업데이트 (애니메이션 중에는 비활성화)
+  updateResultButtons(true);
+
+  // 제목 TTS 먼저 (에러 핸들링)
+  try {
+    speakText(`${chain.ownerName}의 이야기`);
+  } catch (e) {
+    console.error("제목 TTS 재생 중 오류:", e);
+  }
+
+  // 문장들을 순차적으로 표시
+  if (entries.length > 0) {
+    setTimeout(() => {
+      showNextChatMessage(entries, 0);
+    }, 1500); // 제목 TTS 후 잠시 대기
+  } else {
+    // 문장이 없으면 바로 버튼 활성화
+    updateResultButtons(false);
+  }
 }
 
-function updateResultButtons() {
+// 채팅 메시지 하나씩 표시
+function showNextChatMessage(entries, index) {
+  if (index >= entries.length) {
+    // 모든 문장 표시 완료
+    updateResultButtons(false);
+    return;
+  }
+
+  const entry = entries[index];
+  const isLastEntry = (index === entries.length - 1);
+
+  // 채팅 메시지 생성
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "chat-message";
+
+  const writerDiv = document.createElement("div");
+  writerDiv.className = "chat-writer";
+  writerDiv.textContent = entry.writerName || "알 수 없음";
+
+  const bubbleDiv = document.createElement("div");
+  bubbleDiv.className = "chat-bubble";
+  bubbleDiv.innerHTML = highlightKeywords(entry.text || "", entry.usedKeywords || []);
+
+  messageDiv.appendChild(writerDiv);
+  messageDiv.appendChild(bubbleDiv);
+
+  if (chatContainer) {
+    chatContainer.appendChild(messageDiv);
+    // 스크롤 맨 아래로
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  displayedEntryCount = index + 1;
+
+  // TTS로 읽기 (에러 핸들링 포함)
+  try {
+    speakText(entry.text);
+  } catch (e) {
+    console.error("TTS 재생 중 오류:", e);
+  }
+
+  // 마지막 문장이면 TTS 끝난 후 버튼 활성화만 하고 종료
+  if (isLastEntry) {
+    const textLength = (entry.text || "").length;
+    const delay = Math.max(2000, textLength * 80);
+    chatAnimationTimer = setTimeout(() => {
+      updateResultButtons(false);
+    }, delay);
+    return;
+  }
+
+  // 다음 메시지 예약 (TTS 읽는 시간 + 여유)
+  const textLength = (entry.text || "").length;
+  const delay = Math.max(2000, textLength * 80); // 글자당 80ms, 최소 2초
+
+  chatAnimationTimer = setTimeout(() => {
+    showNextChatMessage(entries, index + 1);
+  }, delay);
+}
+
+// 버튼 상태 업데이트
+function updateResultButtons(isAnimating = false) {
   const chains = resultData?.chains || [];
+  const isFirstStory = currentChainIndex === 0;
+  const isLastStory = currentChainIndex === chains.length - 1;
+  const isHost = isResultHost();
   const chain = chains[currentChainIndex];
   const entries = chain?.entries || [];
-  const isFirstPosition = currentChainIndex === 0 && currentEntryIndex === -1;
-  const isLastPosition = currentChainIndex === chains.length - 1 && currentEntryIndex === entries.length - 1;
-  const isHost = isResultHost();
+  const allDisplayed = displayedEntryCount >= entries.length;
 
   // 이전/다음 버튼은 방장만 표시
   if (btnPrev) {
     if (isHost) {
-      btnPrev.disabled = isFirstPosition;
+      btnPrev.disabled = isFirstStory || isAnimating;
       btnPrev.classList.remove("hidden");
     } else {
       btnPrev.classList.add("hidden");
     }
   }
 
-  if (btnNextSentence) {
+  if (btnNextStory) {
     if (isHost) {
-      if (isLastPosition) {
-        btnNextSentence.textContent = "완료!";
+      if (isLastStory && allDisplayed) {
+        btnNextStory.textContent = "완료!";
+        btnNextStory.disabled = true;
       } else {
-        btnNextSentence.textContent = "다음 →";
+        btnNextStory.textContent = "다음 스토리 →";
+        btnNextStory.disabled = isAnimating || !allDisplayed;
       }
-      btnNextSentence.classList.remove("hidden");
+      btnNextStory.classList.remove("hidden");
     } else {
-      btnNextSentence.classList.add("hidden");
+      btnNextStory.classList.add("hidden");
     }
   }
 
-  // 다시하기 버튼 (마지막에만, 방장만 표시)
+  // 다시하기 버튼 (마지막 스토리에서 모든 문장 표시 완료 시, 방장만)
   if (btnRestart) {
-    btnRestart.classList.toggle("hidden", !(isLastPosition && isHost));
+    btnRestart.classList.toggle("hidden", !(isLastStory && allDisplayed && isHost));
   }
 }
 
-function goNextInResults() {
-  // 방장만 조작 가능
+// 다음 스토리로 이동
+function goNextStory() {
   if (!isResultHost()) return;
 
   const chains = resultData?.chains || [];
-  if (chains.length === 0) return;
-
-  const chain = chains[currentChainIndex];
-  const entries = chain?.entries || [];
-
-  // 마지막 위치인지 체크
-  const isLastPosition = currentChainIndex === chains.length - 1 && currentEntryIndex === entries.length - 1;
-  if (isLastPosition) {
-    // 완료 상태
-    return;
-  }
-
-  // 다음으로 이동
-  let newChainIndex = currentChainIndex;
-  let newEntryIndex = currentEntryIndex;
-
-  if (currentEntryIndex < entries.length - 1) {
-    // 같은 스토리 내에서 다음 문장
-    newEntryIndex++;
-  } else {
-    // 다음 스토리로 이동
-    if (currentChainIndex < chains.length - 1) {
-      newChainIndex++;
-      newEntryIndex = -1; // 제목부터 시작
-    }
-  }
+  if (currentChainIndex >= chains.length - 1) return;
 
   // 서버에 동기화 요청
-  socket.emit("result:navigate", { chainIndex: newChainIndex, entryIndex: newEntryIndex });
+  socket.emit("result:navigate", { chainIndex: currentChainIndex + 1 });
 }
 
-function goPrevInResults() {
-  // 방장만 조작 가능
+// 이전 스토리로 이동
+function goPrevStory() {
   if (!isResultHost()) return;
 
-  const chains = resultData?.chains || [];
-  if (chains.length === 0) return;
-
-  // 첫 위치인지 체크
-  if (currentChainIndex === 0 && currentEntryIndex === -1) {
-    return;
-  }
-
-  // 이전으로 이동
-  let newChainIndex = currentChainIndex;
-  let newEntryIndex = currentEntryIndex;
-
-  if (currentEntryIndex > -1) {
-    // 같은 스토리 내에서 이전 문장
-    newEntryIndex--;
-  } else {
-    // 이전 스토리의 마지막 문장으로 이동
-    if (currentChainIndex > 0) {
-      newChainIndex--;
-      const prevChain = chains[newChainIndex];
-      const prevEntries = prevChain?.entries || [];
-      newEntryIndex = prevEntries.length - 1;
-    }
-  }
+  if (currentChainIndex <= 0) return;
 
   // 서버에 동기화 요청
-  socket.emit("result:navigate", { chainIndex: newChainIndex, entryIndex: newEntryIndex });
+  socket.emit("result:navigate", { chainIndex: currentChainIndex - 1 });
 }
 
-// 서버에서 동기화 신호 받으면 화면 업데이트
-function syncResultsDisplay(chainIndex, entryIndex) {
-  currentChainIndex = chainIndex;
-  currentEntryIndex = entryIndex;
-  updateResultsDisplay();
+// 서버에서 동기화 신호 받으면 해당 스토리 표시
+function syncResultsDisplay(chainIndex) {
+  displayStory(chainIndex);
 }
 
 function goByPhase(state) {
@@ -457,11 +691,11 @@ if (state.phase === "lobby") {
 
 // ---- Socket events ----
 socket.on("connect", () => {
-  console.log("connected:", socket.id);
+  console.log("✅ Socket 연결됨:", socket.id);
 });
 
 socket.on("disconnect", () => {
-  console.log("disconnected");
+  console.log("❌ Socket 연결 끊김");
   // 연결 끊기면 안전하게 입장 화면으로
   showScreen(screenName);
 });
@@ -506,6 +740,15 @@ socket.on("story:round", (payload) => {
   // 대기 메시지 숨기기
   if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
 
+  // 작성 상태 초기화
+  isWriting = false;
+  if (writingTimeout) clearTimeout(writingTimeout);
+
+  // 플레이어 상태 초기 렌더링
+  if (currentRoomState && currentRoomState.players) {
+    renderPlayerStatus(currentRoomState.players, {});
+  }
+
   showScreen(screenStory);
 });
 
@@ -521,13 +764,26 @@ socket.on("game:result", (payload) => {
 });
 
 // 결과 화면 동기화 (방장이 조작하면 모두에게 전파)
-socket.on("result:sync", ({ chainIndex, entryIndex }) => {
-  syncResultsDisplay(chainIndex, entryIndex);
+socket.on("result:sync", ({ chainIndex }) => {
+  syncResultsDisplay(chainIndex);
 });
 
 // 다시하기 (방장이 누르면 모두 로비로)
 socket.on("game:restarted", () => {
   showScreen(screenLobby);
+});
+
+// 플레이어 작성 상태 업데이트
+socket.on("story:writingStatus", ({ writingStatus }) => {
+  if (currentRoomState && currentRoomState.players) {
+    renderPlayerStatus(currentRoomState.players, writingStatus);
+  }
+});
+
+// 이모티콘 수신
+socket.on("emoji:received", ({ senderName, emojiId }) => {
+  console.log("✨ 이모티콘 수신:", senderName, emojiId);
+  displayReceivedEmoji(senderName, emojiId);
 });
 
 // ---- Button handlers ----
@@ -539,9 +795,24 @@ socket.on("game:restarted", () => {
  // setTimeout(() => roomCodeInput?.focus(), 0);
 //});
 
-// 스토리 입력란 변화 감지: 제시어 사용 현황 UI 갱신
+// 스토리 입력란 변화 감지: 제시어 사용 현황 UI 갱신 + 작성 중 상태 전송
 inputStoryText?.addEventListener("input", () => {
   updatePromptUsageUI();
+
+  // 작성 중 상태 전송
+  if (!isWriting) {
+    isWriting = true;
+    socket.emit("story:writing", { writing: true });
+  }
+
+  // 2초간 입력 없으면 작성 중 해제
+  if (writingTimeout) clearTimeout(writingTimeout);
+  writingTimeout = setTimeout(() => {
+    if (isWriting) {
+      isWriting = false;
+      socket.emit("story:writing", { writing: false });
+    }
+  }, 2000);
 });
 
 
@@ -668,12 +939,12 @@ btnSubmitStory?.addEventListener("click", () => {
 });
 
 // 결과 화면 버튼 핸들러
-btnNextSentence?.addEventListener("click", () => {
-  goNextInResults();
+btnNextStory?.addEventListener("click", () => {
+  goNextStory();
 });
 
 btnPrev?.addEventListener("click", () => {
-  goPrevInResults();
+  goPrevStory();
 });
 
 // 키보드 네비게이션 (결과 화면에서, 방장만)
@@ -683,10 +954,10 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") {
     e.preventDefault();
-    goNextInResults();
+    goNextStory();
   } else if (e.key === "ArrowLeft") {
     e.preventDefault();
-    goPrevInResults();
+    goPrevStory();
   }
 });
 
@@ -698,6 +969,84 @@ btnRestart?.addEventListener("click", () => {
     if (!res?.ok) return alertError(`다시하기 실패: ${res?.error || "UNKNOWN"}`);
   });
 });
+
+// 스크린샷 저장 (보이는 화면 그대로)
+async function captureAndDownloadScreenshot() {
+  const captureContainer = document.querySelector(".results-container");
+  if (!captureContainer) {
+    alertError("캡처할 대상을 찾을 수 없습니다.");
+    return;
+  }
+
+  // html2canvas 로드 확인
+  if (typeof html2canvas === "undefined") {
+    alertError("스크린샷 라이브러리가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
+    console.error("html2canvas is not loaded");
+    return;
+  }
+
+  const controlsDiv = document.querySelector(".results-controls");
+  const restartBtn = document.getElementById("btn-restart");
+
+  try {
+    // 캡처에 불필요한 UI 숨기기
+    if (controlsDiv) controlsDiv.style.visibility = "hidden";
+    if (restartBtn) restartBtn.style.visibility = "hidden";
+
+    // 폰트가 로드되기를 기다립니다.
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    // 캔버스 캡처 실행
+    const canvas = await html2canvas(captureContainer, {
+      scale: window.devicePixelRatio || 2, // 기기 해상도에 맞춰 선명도 높이기
+      backgroundColor: "#1e293b", // 페이지 배경색과 동일하게 지정
+      useCORS: true,
+      allowTaint: false, // 보안 및 안정성을 위해 false로 설정
+      removeContainer: false, // 실험적 기능 비활성화
+    });
+
+    // 이미지 다운로드 링크 생성 및 클릭
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    const fileName = `story_${storyTitle?.textContent || "story"}_${Date.now()}.png`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    alert("이미지가 성공적으로 저장되었습니다!");
+
+  } catch (error) {
+    console.error("스크린샷 캡처 중 오류 발생:", error);
+    alertError("이미지 저장에 실패했습니다. 다시 시도해 주세요.");
+  } finally {
+    // 숨겼던 UI 다시 표시 (성공/실패 여부와 관계없이 실행)
+    if (controlsDiv) controlsDiv.style.visibility = "visible";
+    if (restartBtn) restartBtn.style.visibility = "visible";
+  }
+}
+
+btnScreenshot?.addEventListener("click", () => {
+  captureAndDownloadScreenshot();
+});
+
+// ---- 이모티콘 버튼 이벤트 ----
+btnEmojiToggle?.addEventListener("click", () => {
+  toggleEmojiPicker();
+});
+
+// 바깥 클릭 시 이모티콘 선택창 닫기
+document.addEventListener("click", (e) => {
+  if (!emojiPicker || emojiPicker.classList.contains("hidden")) return;
+  if (!e.target.closest(".emoji-section")) {
+    toggleEmojiPicker(false);
+  }
+});
+
+// ---- 초기화 ----
+renderEmojiList();
 
 // ---- 초기 화면 ----
 showScreen(screenName);
