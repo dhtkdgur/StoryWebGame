@@ -66,10 +66,11 @@ function getRoomState(roomId) {
   const room = rooms[roomId];
   if (!room) return null;
 
-  // 플레이어 목록 
+  // 플레이어 목록
   const playersArr = Object.values(room.players).map((p) => ({
     id: p.id,
     name: p.name,
+    avatar: p.avatar || null,
     joinedAt: p.joinedAt,
     submitted: p.submitted,
   }));
@@ -662,7 +663,7 @@ io.on("connection", (socket) => {
 
   // ------------------------------------------------------------
   // 방 생성
-  socket.on("room:create", ({ name }, ack) => {
+  socket.on("room:create", ({ name, avatar }, ack) => {
     try {
       const trimmed = String(name ?? "").trim();
       if (!trimmed) return ack?.({ ok: false, error: "NAME_REQUIRED" });
@@ -681,6 +682,7 @@ io.on("connection", (socket) => {
       rooms[roomId].players[socket.id] = {
         id: socket.id,
         name: trimmed,
+        avatar: avatar || null,
         joinedAt: Date.now(),
         submitted: { prompts: false, story: false },
         prompts: [],
@@ -699,7 +701,7 @@ io.on("connection", (socket) => {
 
   // ------------------------------------------------------------
   // 방 참가
-  socket.on("room:join", ({ roomId, name }, ack) => {
+  socket.on("room:join", ({ roomId, name, avatar }, ack) => {
     try {
       const rid = String(roomId ?? "").trim();
       const trimmed = String(name ?? "").trim();
@@ -715,6 +717,7 @@ io.on("connection", (socket) => {
       room.players[socket.id] = {
         id: socket.id,
         name: trimmed,
+        avatar: avatar || null,
         joinedAt: Date.now(),
         submitted: { prompts: false, story: false },
         prompts: [],
@@ -1019,6 +1022,34 @@ io.on("connection", (socket) => {
         senderId: socket.id,
         senderName: player.name,
         emojiId,
+      });
+
+      ack?.({ ok: true });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 결과 화면 이모티콘 전송 (따봉/박수 애니메이션)
+  socket.on("result:emoji", ({ emojiType }, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+      const player = room.players[socket.id];
+      if (!player) return ack?.({ ok: false, error: "PLAYER_NOT_FOUND" });
+
+      // 결과 화면에서만 사용 가능
+      if (room.phase !== "result") return ack?.({ ok: false, error: "NOT_RESULT_PHASE" });
+
+      // 모든 플레이어에게 이모티콘 브로드캐스트
+      io.to(rid).emit("result:emojiReceived", {
+        senderId: socket.id,
+        senderName: player.name,
+        emojiType,
       });
 
       ack?.({ ok: true });
