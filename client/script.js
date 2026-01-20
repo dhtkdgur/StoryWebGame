@@ -65,8 +65,17 @@ const emojiPicker = $("emoji-picker");
 const emojiList = $("emoji-list");
 const emojiDisplay = $("emoji-display");
 
+// avatar (아바타)
+const avatarList = $("avatar-list");
+
+// result emoji (결과 화면 이모티콘)
+const btnResultThumbsup = $("btn-result-thumbsup");
+const btnResultClap = $("btn-result-clap");
+const resultEmojiContainer = $("result-emoji-container");
+
 // ---- Local state ----
 let myName = "";
+let myAvatar = null; // 선택한 아바타 ID
 let currentRoomState = null;
 let currentRoundPayload = null;
 let isWriting = false; // 작성 중 상태
@@ -171,6 +180,71 @@ function renderPlayerStatus(players, writingStatus) {
   });
 }
 
+// ---- 아바타 관련 ----
+// 아바타 목록 (나중에 커스텀 이미지로 교체 가능)
+// type: "emoji" = 기본 이모지, "image" = 커스텀 이미지 (경로)
+const AVATAR_LIST = [
+  { id: "avatar1", type: "emoji", content: "😊" },
+  { id: "avatar2", type: "emoji", content: "😎" },
+  { id: "avatar3", type: "emoji", content: "🤓" },
+  { id: "avatar4", type: "emoji", content: "😈" },
+  { id: "avatar5", type: "emoji", content: "🐱" },
+  { id: "avatar6", type: "emoji", content: "🐶" },
+  { id: "avatar7", type: "emoji", content: "🦊" },
+  { id: "avatar8", type: "emoji", content: "🐸" },
+  // 커스텀 이미지 예시 (나중에 추가):
+  // { id: "custom_avatar1", type: "image", content: "/images/avatars/avatar1.png" },
+  // { id: "custom_avatar2", type: "image", content: "/images/avatars/avatar2.png" },
+];
+
+// 아바타 목록 렌더링
+function renderAvatarList() {
+  if (!avatarList) return;
+  avatarList.innerHTML = "";
+
+  for (const avatar of AVATAR_LIST) {
+    const div = document.createElement("div");
+    div.className = "avatar-item";
+    div.dataset.avatarId = avatar.id;
+
+    if (avatar.type === "image") {
+      const img = document.createElement("img");
+      img.src = avatar.content;
+      img.alt = avatar.id;
+      div.appendChild(img);
+    } else {
+      div.textContent = avatar.content;
+    }
+
+    div.addEventListener("click", () => {
+      selectAvatar(avatar.id);
+    });
+
+    avatarList.appendChild(div);
+  }
+
+  // 기본 선택: 첫 번째 아바타
+  if (AVATAR_LIST.length > 0 && !myAvatar) {
+    selectAvatar(AVATAR_LIST[0].id);
+  }
+}
+
+// 아바타 선택
+function selectAvatar(avatarId) {
+  myAvatar = avatarId;
+
+  // UI 업데이트
+  const items = avatarList?.querySelectorAll(".avatar-item");
+  items?.forEach((item) => {
+    item.classList.toggle("selected", item.dataset.avatarId === avatarId);
+  });
+}
+
+// 아바타 ID로 아바타 객체 찾기
+function getAvatarById(avatarId) {
+  return AVATAR_LIST.find((a) => a.id === avatarId) || null;
+}
+
 // ---- 이모티콘 관련 ----
 // 이모티콘 목록 (나중에 커스텀 이미지로 교체 가능)
 // type: "emoji" = 기본 이모지, "image" = 커스텀 이미지
@@ -269,6 +343,87 @@ function displayReceivedEmoji(senderName, emojiId) {
   setTimeout(() => {
     container.remove();
   }, 3000);
+}
+
+// ---- 결과 화면 이모티콘 애니메이션 ----
+// 설정: 이모티콘 개수 (여기서 수정 가능)
+const RESULT_EMOJI_CONFIG = {
+  count: 8,              // 한 번에 생성되는 이모티콘 개수
+  minRiseHeight: 300,    // 최소 올라가는 높이 (px)
+  maxRiseHeight: 500,    // 최대 올라가는 높이 (px)
+  minDuration: 2.5,      // 최소 애니메이션 시간 (초)
+  maxDuration: 4,        // 최대 애니메이션 시간 (초)
+  maxStartY: 100,        // 최대 시작 Y 위치 (화면 하단으로부터, px) - 너무 위에서 시작하지 않도록
+};
+
+// 결과 화면 이모티콘 전송
+function sendResultEmoji(emojiType) {
+  socket.emit("result:emoji", { emojiType });
+}
+
+// 결과 화면 이모티콘 표시 (여러 개가 아래에서 올라오는 애니메이션)
+function displayResultEmoji(senderName, emojiType) {
+  if (!resultEmojiContainer) return;
+
+  // 이모티콘 콘텐츠 결정
+  const emojiContent = emojiType === "thumbsup" ? "👍" : "👏";
+
+  const count = RESULT_EMOJI_CONFIG.count;
+
+  for (let i = 0; i < count; i++) {
+    // 약간의 시간차를 두고 생성
+    setTimeout(() => {
+      createResultEmojiFloat(senderName, emojiContent);
+    }, i * 80); // 80ms 간격
+  }
+}
+
+// 개별 이모티콘 요소 생성
+function createResultEmojiFloat(senderName, emojiContent) {
+  const container = document.createElement("div");
+  container.className = "result-emoji-float";
+
+  // 랜덤 X 위치 (화면 너비의 10% ~ 90%)
+  const screenWidth = window.innerWidth;
+  const minX = screenWidth * 0.1;
+  const maxX = screenWidth * 0.9;
+  const randomX = minX + Math.random() * (maxX - minX);
+
+  // 랜덤 시작 Y 위치 (0 ~ maxStartY, 화면 하단 기준)
+  const startY = Math.random() * RESULT_EMOJI_CONFIG.maxStartY;
+
+  // 랜덤 올라가는 높이
+  const riseHeight = RESULT_EMOJI_CONFIG.minRiseHeight +
+    Math.random() * (RESULT_EMOJI_CONFIG.maxRiseHeight - RESULT_EMOJI_CONFIG.minRiseHeight);
+
+  // 랜덤 애니메이션 시간
+  const duration = RESULT_EMOJI_CONFIG.minDuration +
+    Math.random() * (RESULT_EMOJI_CONFIG.maxDuration - RESULT_EMOJI_CONFIG.minDuration);
+
+  // CSS 변수로 전달
+  container.style.setProperty("--rise-height", `-${riseHeight}px`);
+  container.style.setProperty("--rise-duration", `${duration}s`);
+  container.style.left = `${randomX}px`;
+  container.style.bottom = `${startY}px`;
+
+  // 이모티콘 콘텐츠
+  const emojiDiv = document.createElement("div");
+  emojiDiv.className = "emoji-content";
+  emojiDiv.textContent = emojiContent;
+
+  // 보낸 사람 이름
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "emoji-name";
+  nameDiv.textContent = senderName;
+
+  container.appendChild(emojiDiv);
+  container.appendChild(nameDiv);
+  resultEmojiContainer.appendChild(container);
+
+  // 애니메이션 종료 후 제거
+  setTimeout(() => {
+    container.remove();
+  }, duration * 1000 + 100);
 }
 
 function renderPromptChips(container, items) {
@@ -786,6 +941,12 @@ socket.on("emoji:received", ({ senderName, emojiId }) => {
   displayReceivedEmoji(senderName, emojiId);
 });
 
+// 결과 화면 이모티콘 수신
+socket.on("result:emojiReceived", ({ senderName, emojiType }) => {
+  console.log("🎉 결과 이모티콘 수신:", senderName, emojiType);
+  displayResultEmoji(senderName, emojiType);
+});
+
 // ---- Button handlers ----
 
 // (옵션) Next 버튼: 닉네임 저장하고 join 화면으로 이동
@@ -820,7 +981,7 @@ inputStoryText?.addEventListener("input", () => {
 btnCreateRoom?.addEventListener("click", () => {
   if (!ensureName()) return;
 
-  socket.emit("room:create", { name: myName }, (res) => {
+  socket.emit("room:create", { name: myName, avatar: myAvatar }, (res) => {
     if (!res?.ok) return alertError(`방 생성 실패: ${res?.error || "UNKNOWN"}`);
     if (res.state) {
       currentRoomState = res.state;
@@ -844,7 +1005,7 @@ btnJoin?.addEventListener("click", () => {
   const roomId = String(roomCodeInput?.value || "").trim();
   if (!roomId) return alertError("방 코드를 입력해줘!");
 
-  socket.emit("room:join", { roomId, name: myName }, (res) => {
+  socket.emit("room:join", { roomId, name: myName, avatar: myAvatar }, (res) => {
     if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
     if (res.state) {
       currentRoomState = res.state;
@@ -1045,8 +1206,18 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ---- 결과 화면 이모티콘 버튼 핸들러 ----
+btnResultThumbsup?.addEventListener("click", () => {
+  sendResultEmoji("thumbsup");
+});
+
+btnResultClap?.addEventListener("click", () => {
+  sendResultEmoji("clap");
+});
+
 // ---- 초기화 ----
 renderEmojiList();
+renderAvatarList();
 
 // ---- 초기 화면 ----
 showScreen(screenName);

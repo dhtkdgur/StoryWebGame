@@ -12,6 +12,13 @@
     <section id="screen-name" class="screen">
       <div class="card">
         <h1>내 친구의 사생활</h1>
+
+        <!-- 아바타 선택 -->
+        <div class="avatar-selection">
+          <p class="subtitle">아바타 선택</p>
+          <div id="avatar-list" class="avatar-list"></div>
+        </div>
+
         <input id="input-nickname" placeholder="닉네임 입력" maxlength="10">
         <div style="display:flex; gap:10px;">
           <button id="btn-create-room">방 만들기</button>
@@ -145,7 +152,16 @@
 
         <!-- 다시하기 버튼 (마지막에만, 방장만 표시) -->
         <button id="btn-restart" class="hidden">다시하기</button>
+
+        <!-- 결과 화면 이모티콘 반응 버튼 -->
+        <div class="result-emoji-section">
+          <button id="btn-result-thumbsup" class="result-emoji-btn">👍</button>
+          <button id="btn-result-clap" class="result-emoji-btn">👏</button>
+        </div>
       </div>
+
+      <!-- 결과 화면 이모티콘 애니메이션 컨테이너 (화면 전체에 표시) -->
+      <div id="result-emoji-container" class="result-emoji-container"></div>
     </section>
 
   </div>
