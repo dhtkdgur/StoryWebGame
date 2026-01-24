@@ -13,7 +13,7 @@ body {
   margin: 0;
   font-family: 'Arial', sans-serif;
   background-color: var(--bg-color);
-  background-image: url('./image/bg.png');
+  background-image: url('./image/00_전체/배경.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -248,7 +248,7 @@ button:disabled {
   justify-content: center;
   align-items: center;
   padding: 60px 50px;
-  background-image: url('./image/note.png');
+  background-image: url('./image/03_키워드 적기/공책.png');
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
@@ -1079,5 +1079,96 @@ button:disabled {
     opacity: 0;
     transform: translateY(var(--rise-height, -400px)) scale(0.8);
   }
+}
+
+/* --------------------
+   Image Buttons (이미지 버튼)
+-------------------- */
+.image-btn {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+  display: inline-block;
+}
+
+.image-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.image-btn:active {
+  transform: scale(0.95);
+}
+
+.image-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(50%);
+}
+
+.image-btn img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
+/* 입장 화면 버튼 이미지 */
+#btn-create-room img,
+#btn-join-room img {
+  width: 180px;
+}
+
+/* 로비 버튼 이미지 */
+#btn-start img,
+#btn-leave img {
+  width: 140px;
+}
+
+#btn-copy img {
+  width: 120px;
+}
+
+/* 키워드/스토리 제출 버튼 */
+#btn-submit-prompts img,
+#btn-submit-story img {
+  width: 120px;
+}
+
+/* 결과 화면 버튼 */
+#btn-prev img,
+#btn-next-story img {
+  width: 140px;
+}
+
+#btn-skip-sentence img,
+#btn-screenshot img {
+  width: 100px;
+}
+
+#btn-restart img {
+  width: 160px;
+}
+
+/* 타이틀 로고 이미지 */
+.title-logo {
+  max-width: 350px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+/* 상태 아이콘 이미지 */
+.status-icon-img {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+}
+
+.sidebar-status-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 

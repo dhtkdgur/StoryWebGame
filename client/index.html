@@ -11,7 +11,7 @@
     <!-- 1. 입장 화면 (JS: screen-name) -->
     <section id="screen-name" class="screen">
       <div class="entry-container">
-        <h1 class="entry-title">내 친구의 사생활</h1>
+        <img src="/image/00_전체/로고.png" alt="내 친구의 사생활" class="title-logo">
 
         <div class="entry-content">
           <!-- 왼쪽: 아바타 선택 -->
@@ -33,8 +33,12 @@
               <input id="input-nickname" placeholder="닉네임 입력" maxlength="10">
             </div>
             <div class="entry-buttons">
-              <button id="btn-create-room">방 만들기</button>
-              <button id="btn-join-room">방 들어가기</button>
+              <button id="btn-create-room" class="image-btn">
+                <img src="/image/01_메인화면/게임호스트버튼.png" alt="방 만들기">
+              </button>
+              <button id="btn-join-room" class="image-btn">
+                <img src="/image/01_메인화면/게임입장하기버튼.png" alt="방 들어가기">
+              </button>
             </div>
           </div>
         </div>
@@ -61,12 +65,18 @@
         <div id="player-list" class="player-grid"></div>
 
         <!-- 나가기 버튼: JS의 btnLeave 매칭 -->
-        <button id="btn-leave" style="margin-top:10px;">나가기</button>
+        <button id="btn-leave" class="image-btn" style="margin-top:10px;">
+          <img src="/image/02_로비/나가기 버튼.png" alt="나가기">
+        </button>
 
         <!-- 게스트에서 깜빡임 방지: 기본 hidden -->
-        <div id="host-controls" class="hidden" style="margin-top:10px;">
-          <button id="btn-copy">코드 복사</button>
-          <button id="btn-start">게임 시작</button>
+        <div id="host-controls" class="hidden" style="margin-top:10px; display: flex; gap: 10px; justify-content: center;">
+          <button id="btn-copy" class="image-btn">
+            <img src="/image/02_로비/방 코드 버튼.png" alt="코드 복사">
+          </button>
+          <button id="btn-start" class="image-btn">
+            <img src="/image/02_로비/시작하기 버튼.png" alt="게임 시작">
+          </button>
         </div>
 
         <p id="wait-msg-lobby" class="hidden">
@@ -87,22 +97,24 @@
         <div class="note-background">
           <div class="keyword-cards-wrapper">
             <div class="keyword-card">
-              <img src="/image/card1.png" alt="카드1">
+              <img src="/image/03_키워드 적기/카드1.png" alt="카드1">
               <input type="text" class="input-prompt" placeholder="코딩하는 기훈이">
             </div>
             <div class="keyword-card">
-              <img src="/image/card2.png" alt="카드2">
+              <img src="/image/03_키워드 적기/카드2.png" alt="카드2">
               <input type="text" class="input-prompt" placeholder="비밀의 방">
             </div>
             <div class="keyword-card">
-              <img src="/image/card3.png" alt="카드3">
+              <img src="/image/03_키워드 적기/카드3.png" alt="카드3">
               <input type="text" class="input-prompt" placeholder="마법의 주문">
             </div>
           </div>
         </div>
       </div>
 
-      <button id="btn-submit-prompts" style="width: auto; padding: 15px 50px;">작성 완료</button>
+      <button id="btn-submit-prompts" class="image-btn">
+        <img src="/image/03_키워드 적기/확인.png" alt="작성 완료">
+      </button>
       <p id="wait-msg" class="hidden">다른 플레이어들을 기다리는 중...</p>
 
       <!-- 플레이어 작성 상태 -->
@@ -146,7 +158,9 @@
               ></textarea>
             </div>
 
-            <button id="btn-submit-story" style="margin-top: 10px;">제출</button>
+            <button id="btn-submit-story" class="image-btn" style="margin-top: 10px;">
+              <img src="/image/04_스토리 적기/제출.png" alt="제출">
+            </button>
 
             <p id="story-wait-msg" class="hidden">다른 플레이어들을 기다리는 중...</p>
           </div>
@@ -181,14 +195,22 @@
 
         <!-- 컨트롤 버튼 -->
         <div class="results-controls">
-          <button id="btn-prev" class="control-btn">← 이전 스토리</button>
+          <button id="btn-prev" class="image-btn">
+            <img src="/image/05_엔딩/이전 이야기로.png" alt="이전 스토리">
+          </button>
           <button id="btn-skip-sentence" class="control-btn">⏩ 스킵</button>
-          <button id="btn-next-story" class="control-btn primary">다음 스토리 →</button>
-          <button id="btn-screenshot" class="control-btn primary">📸 저장</button>
+          <button id="btn-next-story" class="image-btn">
+            <img src="/image/05_엔딩/다음 이야기로.png" alt="다음 스토리">
+          </button>
+          <button id="btn-screenshot" class="image-btn">
+            <img src="/image/05_엔딩/저장하기.png" alt="저장">
+          </button>
         </div>
 
         <!-- 다시하기 버튼 (마지막에만, 방장만 표시) -->
-        <button id="btn-restart" class="hidden">다시하기</button>
+        <button id="btn-restart" class="image-btn hidden">
+          <img src="/image/05_엔딩/다시하기.png" alt="다시하기">
+        </button>
 
         <!-- 결과 화면 이모티콘 반응 버튼 -->
         <div class="result-emoji-section">
