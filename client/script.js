@@ -217,11 +217,11 @@ function renderPromptStatus(players, writingStatus) {
     iconSpan.className = "status-icon";
 
     if (isDone) {
-      iconSpan.textContent = "✓";
+      iconSpan.innerHTML = '<img src="/image/03_키워드 적기/작성완료.png" class="status-icon-img" alt="완료">';
     } else if (isWritingNow) {
-      iconSpan.textContent = "...";
+      iconSpan.innerHTML = '<img src="/image/03_키워드 적기/작성중.png" class="status-icon-img" alt="작성중">';
     } else {
-      iconSpan.textContent = "○";
+      iconSpan.innerHTML = '<img src="/image/03_키워드 적기/생각중.png" class="status-icon-img" alt="생각중">';
     }
 
     const nameSpan = document.createElement("span");
@@ -324,11 +324,11 @@ function createSidebarPlayer(player, writingStatus, isLeftSide) {
   const statusDiv = document.createElement("div");
   statusDiv.className = "player-status";
   if (isDone) {
-    statusDiv.textContent = "완료 ✓";
+    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="sidebar-status-icon" alt="완료"> 완료';
   } else if (isWritingNow) {
-    statusDiv.textContent = "작성중...";
+    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="sidebar-status-icon" alt="작성중"> 작성중';
   } else {
-    statusDiv.textContent = "생각중...";
+    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="sidebar-status-icon" alt="생각중"> 생각중';
   }
 
   div.appendChild(avatarDiv);
@@ -442,11 +442,11 @@ function updateSidebarPlayerStatus(players, writingStatus) {
       const statusDiv = playerDiv.querySelector(".player-status");
       if (statusDiv) {
         if (isDone) {
-          statusDiv.textContent = "완료 ✓";
+          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="sidebar-status-icon" alt="완료"> 완료';
         } else if (isWritingNow) {
-          statusDiv.textContent = "작성중...";
+          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="sidebar-status-icon" alt="작성중"> 작성중';
         } else {
-          statusDiv.textContent = "생각중...";
+          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="sidebar-status-icon" alt="생각중"> 생각중';
         }
       }
     }
