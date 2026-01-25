@@ -3,7 +3,6 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const { Server } = require("socket.io");
-const { TypecastClient } = require("@neosapience/typecast-js");
 
 const app = express();
 const server = http.createServer(app);
@@ -16,59 +15,6 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-});
-
-// TypeCast TTS 클라이언트 초기화
-const typecastClient = new TypecastClient({
-  apiKey: '__pltNByiXxTsVUzKBPpaHPEuhoXnKFcnGmn5uNsmCk3X'
-});
-
-// 사용 가능한 Voice 목록 확인 (서버 시작 시)
-async function checkAvailableVoices() {
-  try {
-    console.log("=== TypeCast 사용 가능한 Voice 확인 중... ===");
-    const voices = await typecastClient.getVoicesV2({
-      language: 'kor'
-    });
-
-    console.log(`총 ${voices.length}개의 한국어 음성 발견`);
-
-    // 처음 5개만 출력
-    voices.slice(0, 5).forEach((voice, idx) => {
-      console.log(`\n[Voice ${idx + 1}]`);
-      console.log(`  ID: ${voice.voice_id}`);
-      console.log(`  Name: ${voice.voice_name}`);
-      console.log(`  Gender: ${voice.gender}`);
-      console.log(`  Age: ${voice.age}`);
-      console.log(`  Models: ${voice.models.map(m => m.version).join(', ')}`);
-    });
-
-    // tc_5c547545fcfee90007fed459가 있는지 확인
-    const targetVoice = voices.find(v => v.voice_id === 'tc_5c547545fcfee90007fed459');
-    if (targetVoice) {
-      console.log("\n✅ 지정한 Voice ID를 찾았습니다:");
-      console.log(`  ID: ${targetVoice.voice_id}`);
-      console.log(`  Name: ${targetVoice.voice_name}`);
-    } else {
-      console.log("\n❌ 지정한 Voice ID를 찾을 수 없습니다. 첫 번째 Voice를 대체로 사용합니다.");
-      if (voices.length > 0) {
-        console.log(`  대체 Voice ID: ${voices[0].voice_id}`);
-        console.log(`  대체 Voice Name: ${voices[0].voice_name}`);
-      }
-    }
-
-    return voices;
-  } catch (e) {
-    console.error("Voice 목록 조회 실패:", e.message);
-    return [];
-  }
-}
-
-// 서버 시작 시 Voice 확인 (비동기)
-let availableVoices = [];
-checkAvailableVoices().then(voices => {
-  availableVoices = voices;
-  console.log("\n=== TypeCast 초기화 완료 ===\n");
 });
 
 // Express 미들웨어: JSON 파싱
@@ -1385,60 +1331,6 @@ io.on("connection", (socket) => {
     } catch (e) {
       console.error(e);
       ack?.({ ok: false, error: "SERVER_ERROR" });
-    }
-  });
-
-  // ------------------------------------------------------------
-  // TypeCast TTS 요청 처리
-  socket.on("tts:request", async ({ text }, ack) => {
-    try {
-      if (!text || typeof text !== "string") {
-        console.error("TTS: Invalid text input");
-        return ack?.({ ok: false, error: "INVALID_TEXT" });
-      }
-
-      console.log(`TTS Request: "${text.substring(0, 50)}..."`);
-
-      // Voice ID 결정 (사용 가능한 voice 확인)
-      let voiceId = "tc_5c547545fcfee90007fed459";
-
-      if (availableVoices.length > 0) {
-        const targetVoice = availableVoices.find(v => v.voice_id === voiceId);
-        if (!targetVoice) {
-          // 지정한 voice가 없으면 첫 번째 사용 가능한 voice 사용
-          voiceId = availableVoices[0].voice_id;
-          console.log(`  → 대체 Voice 사용: ${voiceId} (${availableVoices[0].voice_name})`);
-        }
-      }
-
-      // TypeCast API로 TTS 생성 (공식 문서 기준)
-      const audio = await typecastClient.textToSpeech({
-        text: text,
-        voice_id: voiceId,
-        model: "ssfm-v30",
-        language: "kor",
-        output: {
-          audio_format: "mp3",  // mp3가 더 작고 브라우저 호환성 좋음
-          volume: 100,
-          audio_tempo: 1.0
-        }
-      });
-
-      console.log(`TTS Success: Audio generated (${audio.audioData.length} bytes)`);
-
-      // 오디오 데이터를 Base64로 인코딩하여 전송
-      const audioBase64 = Buffer.from(audio.audioData).toString('base64');
-
-      ack?.({ ok: true, audioData: audioBase64, format: "mp3" });
-    } catch (e) {
-      console.error("TTS Error Details:", e);
-      console.error("Error message:", e.message);
-      if (e.response) {
-        console.error("API Response Data:", JSON.stringify(e.response.data, null, 2));
-        console.error("API Status:", e.response.status);
-      }
-      console.error("Error stack:", e.stack);
-      ack?.({ ok: false, error: e.message || "TTS_FAILED" });
     }
   });
 
