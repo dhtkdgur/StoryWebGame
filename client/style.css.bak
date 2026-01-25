@@ -1,21 +1,11 @@
 /* ==============================================
-   StoryWebGame - 스타일시트
+   StoryWebGame - 통합 스타일시트
    ============================================== */
 
-/* --------------------
-   CSS 변수 정의
-   - 색상 테마를 중앙에서 관리
-   - bg-color: 배경색
-   - card-bg: 카드/패널 배경색
-   - accent-yellow: 강조색 (노란색)
-   - accent-blue: 강조색 (파란색)
-   - text-white: 기본 텍스트 색상
--------------------- */
 :root {
   --bg-color: #1e293b;
   --card-bg: #334155;
   --accent-yellow: #f59e0b;
-  --accent-blue: #3b82f6;
   --text-white: #f8fafc;
 }
 

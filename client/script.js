@@ -21,7 +21,7 @@ const btnJoinRoom = $("btn-join-room");
 const roomCodeInput = $("input-room-code");
 const btnJoin = $("btn-join"); // Go! 버튼 (중요)
 const hostControls = $("host-controls");
-const roomCodeDisplay = $("room-code-display"); // 방 코드 표시 컨테이너 (클릭 시 복사)
+const roomCodeDisplay = $("room-code-btn"); // 방 코드 표시 컨테이너 (클릭 시 복사)
 const waitMsgLobby = $("wait-msg-lobby");
 
 // BGM
@@ -199,38 +199,63 @@ function renderPlayers(players, hostId) {
   playerList.innerHTML = "";
 
   (players || []).forEach((p) => {
-    const div = document.createElement("div");
-    div.className = "player-card";
+    // player-row 컨테이너
+    const playerRow = document.createElement("div");
+    playerRow.className = "player-row";
+
+    // player-info: 아바타, 이름, 방장 아이콘을 가로로 배치
+    const playerInfo = document.createElement("div");
+    playerInfo.className = "player-info";
+
     const isHost = p.id === hostId;
     const promptDone = p.submitted?.prompts ? " (제시어 완료)" : "";
 
     // 아바타 표시
-    const avatarDiv = document.createElement("div");
-    avatarDiv.className = "player-avatar";
+    const avatarImg = document.createElement("img");
+    avatarImg.className = "player-avatar-img";
     const avatar = getAvatarById(p.avatar);
     if (avatar) {
       if (avatar.type === "image") {
-        avatarDiv.innerHTML = `<img src="${avatar.content}" alt="${avatar.id}">`;
+        avatarImg.src = avatar.content;
+        avatarImg.alt = avatar.id;
       } else {
-        avatarDiv.textContent = avatar.content;
+        // 이모지인 경우 fallback
+        avatarImg.textContent = avatar.content;
       }
     } else {
-      avatarDiv.textContent = "?";
+      avatarImg.textContent = "?";
     }
+    playerInfo.appendChild(avatarImg);
 
     // 이름 표시
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "player-name";
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "player-name";
     let displayName = p.name;
     if (getVisualLength(displayName) > 16) {
       displayName = displayName.substring(0, 10) + "...";
     }
-    nameDiv.textContent = `${displayName}${isHost ? " (방장)" : ""}${promptDone}`;
-    nameDiv.title = p.name;
+    nameSpan.textContent = `${displayName}${isHost ? " (방장)" : ""}${promptDone}`;
+    nameSpan.title = p.name;
+    playerInfo.appendChild(nameSpan);
 
-    div.appendChild(avatarDiv);
-    div.appendChild(nameDiv);
-    playerList.appendChild(div);
+    // 방장 왕관 아이콘 (오른쪽에 배치)
+    if (isHost) {
+      const hostIcon = document.createElement("img");
+      hostIcon.src = "./image/02_로비/방장왕관.png";
+      hostIcon.alt = "방장";
+      hostIcon.className = "host-icon";
+      playerInfo.appendChild(hostIcon);
+    }
+
+    playerRow.appendChild(playerInfo);
+
+    // 구분선
+    const dividerImg = document.createElement("img");
+    dividerImg.src = "./image/02_로비/참가자목록 구분선.png";
+    dividerImg.className = "divider-img";
+    playerRow.appendChild(dividerImg);
+
+    playerList.appendChild(playerRow);
   });
 }
 

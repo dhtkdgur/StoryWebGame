@@ -47,8 +47,13 @@
     <!-- 1. 입장 화면 (JS: screen-name) -->
     <section id="screen-name" class="screen">
       <div class="entry-container">
+        <!-- 장식 요소: 볼펜, 클립, 형광펜 -->
+        <img src="/image/01_메인화면/볼펜.png" alt="볼펜" class="pen-decoration">
+        <img src="/image/01_메인화면/클립.png" alt="클립" class="clip-decoration">
+        <img src="/image/01_메인화면/형광펜.png" alt="형광펜" class="highlighter-decoration">
+
         <div class="entry-content">
-          <!-- 왼쪽: 아바타 선택 -->
+          <!-- 왼쪽: 아바타 선택 + 닉네임 입력 -->
           <div class="entry-left">
             <div class="avatar-preview-container">
               <p class="subtitle">선택한 아바타</p>
@@ -58,10 +63,6 @@
               <p class="subtitle">아바타 선택</p>
               <div id="avatar-list" class="avatar-list"></div>
             </div>
-          </div>
-
-          <!-- 오른쪽: 닉네임 및 버튼 -->
-          <div class="entry-right">
             <div class="nickname-section">
               <p class="subtitle">닉네임</p>
               <div class="nickname-label-wrapper">
@@ -69,6 +70,10 @@
                 <input id="input-nickname" placeholder="닉네임 입력" maxlength="10">
               </div>
             </div>
+          </div>
+
+          <!-- 오른쪽: 게임호스트, 게임입장 버튼 -->
+          <div class="entry-right">
             <div class="entry-buttons">
               <button id="btn-create-room" class="image-btn">
                 <img src="/image/01_메인화면/게임호스트버튼.png" alt="방 만들기">
@@ -94,37 +99,63 @@
     <!-- 3. 로비 -->
     <section id="screen-lobby" class="screen hidden">
       <div class="lobby-container">
-        <!-- 왼쪽: 플레이어 목록 -->
+        
+        <img src="./image/02_로비/대기실.png" alt="대기실" class="lobby-tag">
+
         <div class="lobby-left">
-          <h2>대기실</h2>
-          <div id="player-list" class="player-list-vertical"></div>
+          <h2>참가자 목록 ( <span id="player-count">1</span> / 12 )</h2>
+          
+          <div id="player-list" class="player-list-vertical">
+            
+            <div class="player-row">
+              <div class="player-info">
+                <img src="./image/02_로비/아바타_참가자.png" class="player-avatar-img">
+                <span class="player-name">짜파게티파티</span>
+                <img src="./image/02_로비/방장왕관.png" class="host-icon" alt="방장">
+              </div>
+              <img src="./image/02_로비/참가자목록 구분선.png" class="divider-img">
+            </div>
+
+            <div class="player-row">
+              <div class="player-info">
+                <img src="./image/02_로비/아바타_참가자.png" class="player-avatar-img">
+                <span class="player-name">두폰쿠내놔</span>
+              </div>
+              <img src="./image/02_로비/참가자목록 구분선.png" class="divider-img">
+            </div>
+
+            <div class="player-row empty">
+              <div class="player-info">
+                <img src="./image/02_로비/아바타_빈 참가자.png" class="player-avatar-img">
+                <span class="player-name" style="color:#999;">빈 자리</span>
+              </div>
+              <img src="./image/02_로비/참가자목록 구분선.png" class="divider-img">
+            </div>
+
+          </div>
         </div>
 
-        <!-- 오른쪽: 버튼들 (시작하기, 방코드, 나가기 순서) -->
         <div class="lobby-right">
-          <!-- 시작하기 버튼 (방장만 보임) -->
-          <div id="host-controls" class="hidden">
+          
+          <div id="host-controls">
             <button id="btn-start" class="image-btn">
-              <img src="/image/02_로비/시작하기 버튼.png" alt="게임 시작">
+              <img src="./image/02_로비/시작하기 버튼.png" alt="시작하기">
             </button>
           </div>
 
-          <!-- 방 코드 표시 -->
-          <div id="room-code-display" class="room-code-container">
-            <span id="display-room-code" class="room-code-text"></span>
-            <img src="/image/02_로비/방 코드 버튼.png" alt="방 코드" class="room-code-img">
-            <img src="/image/02_로비/방 코드_호버 시_복사하기 버튼.png" alt="복사하기" class="room-code-hover-img">
+          <div class="room-code-container" id="room-code-btn">
+            <img src="./image/02_로비/방 코드 버튼.png" alt="방 코드" class="room-code-img">
+            <img src="./image/02_로비/방 코드_호버 시_복사하기 버튼.png" alt="복사하기" class="room-code-hover-img">
+            <span id="display-room-code" class="room-code-text">방 코드: 0000</span>
           </div>
 
-          <!-- 나가기 버튼 -->
           <button id="btn-leave" class="image-btn">
-            <img src="/image/02_로비/나가기 버튼.png" alt="나가기">
+            <img src="./image/02_로비/나가기 버튼.png" alt="나가기">
           </button>
 
-          <p id="wait-msg-lobby" class="hidden">
-            방장이 게임을 시작하기를 기다리는 중…
-          </p>
+          <p id="wait-msg-lobby">방장이 게임을 시작하길 기다리는 중 ...</p>
         </div>
+
       </div>
     </section>
 
