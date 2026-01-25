@@ -1,3 +1,16 @@
+/* ==============================================
+   StoryWebGame - 스타일시트
+   ============================================== */
+
+/* --------------------
+   CSS 변수 정의
+   - 색상 테마를 중앙에서 관리
+   - bg-color: 배경색
+   - card-bg: 카드/패널 배경색
+   - accent-yellow: 강조색 (노란색)
+   - accent-blue: 강조색 (파란색)
+   - text-white: 기본 텍스트 색상
+-------------------- */
 :root {
   --bg-color: #1e293b;
   --card-bg: #334155;
@@ -7,24 +20,29 @@
 }
 
 /* --------------------
-   Base
+   기본 스타일 (Base)
+   - 페이지 전체 레이아웃 설정
+   - 배경 이미지 및 폰트 설정
 -------------------- */
 body {
   margin: 0;
   font-family: 'Arial', sans-serif;
   background-color: var(--bg-color);
+  /* 배경 이미지 설정 */
   background-image: url('./image/00_전체/배경.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text-white);
+  /* 중앙 정렬 레이아웃 */
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
 }
 
+/* 화면(섹션) - display:none으로 관리되는 각 화면의 기본 레이아웃 */
 .screen {
   display: flex;
   flex-direction: column;
@@ -32,12 +50,14 @@ body {
   gap: 20px;
 }
 
+/* 숨김 클래스 - 요소를 완전히 숨김 */
 .hidden {
   display: none !important;
 }
 
 /* --------------------
-   Global Logo (모든 화면 상단 중앙)
+   전역 로고 (Global Logo)
+   - 모든 화면 상단 중앙에 고정 표시
 -------------------- */
 #global-logo {
   position: fixed;
@@ -45,22 +65,28 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  pointer-events: none;
+  pointer-events: none; /* 클릭 이벤트 무시 */
 }
 
 .global-logo-img {
   max-width: 300px;
   height: auto;
+  object-fit: contain;
 }
 
-/* body와 #app 간격 조정 (로고 공간 확보) */
+/* 앱 컨테이너 - 로고 공간 확보를 위한 상단 패딩 */
 #app {
   padding-top: 120px;
 }
 
 /* --------------------
-   Menu (설정 메뉴)
+   설정 메뉴 (Menu)
+   - 왼쪽 상단 토글 버튼
+   - 슬라이드 패널
+   - 오버레이
 -------------------- */
+
+/* 메뉴 토글 버튼 - 왼쪽 상단 고정 */
 .menu-toggle-btn {
   position: fixed;
   top: 20px;
@@ -91,6 +117,7 @@ body {
   line-height: 1;
 }
 
+/* 메뉴 오버레이 - 메뉴 열렸을 때 배경 어둡게 */
 .menu-overlay {
   position: fixed;
   top: 0;
@@ -107,6 +134,7 @@ body {
   opacity: 1;
 }
 
+/* 메뉴 패널 - 왼쪽에서 슬라이드 */
 .menu-panel {
   position: fixed;
   top: 0;
@@ -116,16 +144,17 @@ body {
   background: var(--card-bg);
   z-index: 1200;
   box-shadow: 5px 0 25px rgba(0, 0, 0, 0.4);
-  transform: translateX(-100%);
+  transform: translateX(-100%); /* 기본값: 숨김 */
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
 }
 
 .menu-panel:not(.hidden) {
-  transform: translateX(0);
+  transform: translateX(0); /* 열렸을 때 */
 }
 
+/* 메뉴 헤더 - 제목과 닫기 버튼 */
 .menu-header {
   display: flex;
   justify-content: space-between;
@@ -140,6 +169,7 @@ body {
   color: var(--text-white);
 }
 
+/* 메뉴 닫기 버튼 */
 .menu-close-btn {
   width: 36px;
   height: 36px;
@@ -160,12 +190,14 @@ body {
   background: #64748b;
 }
 
+/* 메뉴 콘텐츠 영역 */
 .menu-content {
   padding: 20px;
   flex: 1;
   overflow-y: auto;
 }
 
+/* 메뉴 아이템 - 개별 설정 항목 */
 .menu-item {
   margin-bottom: 25px;
 }
@@ -182,12 +214,14 @@ body {
   color: var(--text-white);
 }
 
+/* 볼륨 값 표시 */
 .volume-value {
   font-size: 0.9rem;
   color: var(--accent-yellow);
   font-weight: bold;
 }
 
+/* 볼륨 슬라이더 */
 .volume-slider {
   width: 100%;
   height: 8px;
@@ -201,6 +235,7 @@ body {
   padding: 0;
 }
 
+/* 슬라이더 핸들 (Chrome, Safari) */
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -217,6 +252,7 @@ body {
   transform: scale(1.2);
 }
 
+/* 슬라이더 핸들 (Firefox) */
 .volume-slider::-moz-range-thumb {
   width: 20px;
   height: 20px;
@@ -227,6 +263,7 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
+/* 뮤트 토글 버튼 */
 .mute-toggle-btn {
   padding: 8px 20px;
   border-radius: 8px;
@@ -237,11 +274,13 @@ body {
   width: auto;
 }
 
+/* 뮤트 ON 상태 */
 .mute-toggle-btn.on {
   background: var(--accent-blue);
   color: white;
 }
 
+/* 뮤트 OFF 상태 */
 .mute-toggle-btn.off {
   background: #64748b;
   color: #94a3b8;
@@ -252,7 +291,8 @@ body {
 }
 
 /* --------------------
-   Card
+   카드 (Card)
+   - 주요 콘텐츠를 담는 컨테이너
 -------------------- */
 .card {
   background: var(--card-bg);
@@ -263,12 +303,14 @@ body {
   width: 320px;
 }
 
+/* 넓은 카드 - 스토리 작성 화면에서 사용 (공책 배경 위에 표시) */
 .card.wide {
   width: 600px;
 }
 
 /* --------------------
-   Inputs
+   입력 필드 (Inputs)
+   - 텍스트 입력, 텍스트 영역
 -------------------- */
 input,
 textarea {
@@ -283,7 +325,8 @@ textarea {
 }
 
 /* --------------------
-   Buttons
+   버튼 (Buttons)
+   - 기본 버튼 스타일
 -------------------- */
 button {
   width: 100%;
@@ -295,17 +338,20 @@ button {
   transition: transform 0.1s, opacity 0.1s;
 }
 
+/* 버튼 클릭 효과 */
 button:active {
   transform: scale(0.98);
 }
 
+/* 비활성화된 버튼 */
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* --------------------
-   Entry Screen (입장 화면)
+   입장 화면 (Entry Screen)
+   - 닉네임 입력 및 방 생성/입장
 -------------------- */
 .entry-container {
   background: var(--card-bg);
@@ -313,7 +359,9 @@ button:disabled {
   border-radius: 20px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
   text-align: center;
-  min-width: 600px;
+  width: 650px;
+  height: 450px;
+  box-sizing: border-box;
 }
 
 .entry-title {
@@ -321,12 +369,14 @@ button:disabled {
   font-size: 2rem;
 }
 
+/* 입장 화면 콘텐츠 - 좌우 분할 */
 .entry-content {
   display: flex;
   gap: 40px;
   align-items: stretch;
 }
 
+/* 왼쪽 영역 - 아바타 선택 */
 .entry-left {
   flex: 1;
   display: flex;
@@ -334,9 +384,10 @@ button:disabled {
   align-items: center;
   gap: 15px;
   padding-right: 30px;
-  border-right: 2px solid #475569;
+  border-right: 2px solid #475569; /* 구분선 */
 }
 
+/* 오른쪽 영역 - 닉네임 및 버튼 */
 .entry-right {
   flex: 1;
   display: flex;
@@ -345,6 +396,7 @@ button:disabled {
   gap: 20px;
 }
 
+/* 아바타 미리보기 */
 .avatar-preview-container {
   text-align: center;
 }
@@ -370,16 +422,19 @@ button:disabled {
   object-fit: cover;
 }
 
+/* 아바타 미선택 시 ? 표시 */
 .avatar-preview:empty::after {
   content: "?";
   color: #94a3b8;
   font-size: 3rem;
 }
 
+/* 닉네임 섹션 */
 .nickname-section {
   text-align: left;
 }
 
+/* 닉네임 입력 래퍼 - 견출지 이미지 배경 */
 .nickname-label-wrapper {
   position: relative;
   display: inline-block;
@@ -390,8 +445,10 @@ button:disabled {
   width: 100%;
   height: auto;
   display: block;
+  object-fit: contain;
 }
 
+/* 닉네임 입력 필드 - 이미지 위에 중앙 배치 */
 .nickname-label-wrapper input {
   position: absolute;
   top: 50%;
@@ -416,40 +473,28 @@ button:disabled {
   outline: none;
 }
 
+/* 입장 버튼 컨테이너 */
 .entry-buttons {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
+/* 방 만들기 버튼 색상 */
 #btn-create-room {
   background: var(--accent-yellow);
   color: #000;
 }
 
+/* 방 들어가기 버튼 색상 */
 #btn-join-room {
   background: var(--accent-blue);
   color: #fff;
 }
 
-/* Entry (legacy) */
-#btn-create {
-  background: var(--accent-yellow);
-  color: #000;
-}
 
-#btn-go-join {
-  background: var(--accent-blue);
-  color: #fff;
-}
 
-/* Join */
-#btn-join {
-  background: var(--accent-blue);
-  color: #fff;
-}
-
-/* Lobby */
+/* 로비 버튼 색상 */
 #btn-copy {
   background: #475569;
   color: #fff;
@@ -461,7 +506,8 @@ button:disabled {
 }
 
 /* --------------------
-   Player List
+   플레이어 목록 (Player List)
+   - 그리드/리스트 레이아웃
 -------------------- */
 .player-grid {
   display: grid;
@@ -479,7 +525,8 @@ button:disabled {
 }
 
 /* --------------------
-   Lobby Layout (새 로비 레이아웃)
+   로비 레이아웃 (Lobby Layout)
+   - 대기실 화면
 -------------------- */
 .lobby-container {
   display: flex;
@@ -488,9 +535,12 @@ button:disabled {
   background: var(--card-bg);
   border-radius: 20px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  min-width: 700px;
+  width: 750px;
+  height: 450px;
+  box-sizing: border-box;
 }
 
+/* 로비 왼쪽 - 플레이어 목록 */
 .lobby-left {
   flex: 1;
   display: flex;
@@ -503,6 +553,7 @@ button:disabled {
   color: #334155;
 }
 
+/* 로비 오른쪽 - 컨트롤 버튼 */
 .lobby-right {
   display: flex;
   flex-direction: column;
@@ -519,6 +570,7 @@ button:disabled {
   width: 100%;
 }
 
+/* 플레이어 카드 - 아바타와 이름 */
 .player-list-vertical .player-card {
   display: flex;
   align-items: center;
@@ -529,6 +581,7 @@ button:disabled {
   border-radius: 10px;
 }
 
+/* 플레이어 아바타 */
 .player-list-vertical .player-card .player-avatar {
   width: 40px;
   height: 40px;
@@ -565,9 +618,11 @@ button:disabled {
 }
 
 /* --------------------
-   Prompts (새로운 카드 디자인)
+   키워드 입력 화면 (Prompts)
+   - 3개의 카드에 키워드 입력
 -------------------- */
-/* 키워드 입력 화면 레이아웃 (스토리 화면과 동일) */
+
+/* 키워드 화면 레이아웃 */
 .prompts-layout {
   display: flex;
   justify-content: center;
@@ -584,6 +639,7 @@ button:disabled {
   align-items: center;
 }
 
+/* 키워드 카드 컨테이너 */
 .prompt-container {
   position: relative;
   display: flex;
@@ -592,6 +648,7 @@ button:disabled {
   padding: 20px;
 }
 
+/* 공책 배경 이미지 */
 .note-background {
   position: relative;
   display: flex;
@@ -599,13 +656,15 @@ button:disabled {
   align-items: center;
   padding: 60px 50px;
   background-image: url('./image/03_키워드 적기/공책.png');
-  background-size: 100% 100%;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  min-width: 700px;
-  min-height: 300px;
+  width: 800px;
+  height: 350px;
+  box-sizing: border-box;
 }
 
+/* 키워드 카드 3개 래퍼 */
 .keyword-cards-wrapper {
   display: flex;
   justify-content: center;
@@ -613,6 +672,7 @@ button:disabled {
   gap: 30px;
 }
 
+/* 개별 키워드 카드 */
 .keyword-card {
   position: relative;
   display: flex;
@@ -624,8 +684,10 @@ button:disabled {
   width: 180px;
   height: auto;
   filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.2));
+  object-fit: contain;
 }
 
+/* 키워드 입력 필드 - 카드 이미지 위에 배치 */
 .keyword-card input {
   position: absolute;
   top: 45%;
@@ -654,13 +716,9 @@ button:disabled {
   border-bottom: 2px solid var(--accent-blue);
 }
 
-.prompt-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin: 20px 0;
-}
 
+
+/* 부제목 스타일 */
 .subtitle {
   color: #94a3b8;
   font-size: 0.9rem;
@@ -668,7 +726,8 @@ button:disabled {
 }
 
 /* --------------------
-   Prompt / Story Chips
+   제시어/스토리 칩 (Prompt/Story Chips)
+   - 작은 태그 형태로 표시
 -------------------- */
 .result-grid {
   display: flex;
@@ -688,13 +747,64 @@ button:disabled {
   font-weight: bold;
 }
 
+/* 사용된 제시어 - 흐리게 표시 */
 .result-item.used {
   opacity: 0.35;
   text-decoration: line-through;
 }
 
 /* --------------------
-   Wait Messages
+   스토리 작성 화면 제시어 카드
+   - 카드 이미지 위에 제시어 텍스트 표시
+-------------------- */
+.story-keyword-cards {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.story-keyword-card {
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.story-keyword-card:hover {
+  transform: scale(1.05);
+}
+
+.story-keyword-card img {
+  width: 110px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
+}
+
+.story-keyword-text {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #1e293b;
+  text-align: center;
+  width: 85%;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+/* 사용된 키워드 카드 */
+.story-keyword-card.used {
+  opacity: 0.4;
+}
+
+.story-keyword-card.used .story-keyword-text {
+  text-decoration: line-through;
+}
+
+/* --------------------
+   대기 메시지 (Wait Messages)
 -------------------- */
 #wait-msg-lobby,
 #wait-msg-prompts,
@@ -705,8 +815,10 @@ button:disabled {
 }
 
 /* --------------------
-   Results (채팅방 스타일)
+   결과 화면 (Results)
+   - 채팅방 스타일로 스토리 표시
 -------------------- */
+
 /* 결과 화면 전체 래퍼 */
 .results-wrapper {
   display: flex;
@@ -725,7 +837,7 @@ button:disabled {
   padding: 20px;
 }
 
-/* 오른쪽 사이드 컨트롤 버튼 */
+/* 오른쪽 사이드 컨트롤 버튼 (다시하기, 저장, 이전/다음) */
 .results-side-controls {
   display: flex;
   flex-direction: column;
@@ -735,10 +847,10 @@ button:disabled {
 }
 
 .result-side-btn {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
   cursor: pointer;
-  padding: 5px;
+  padding: 0 !important;
   transition: transform 0.3s ease;
   width: auto;
 }
@@ -747,8 +859,10 @@ button:disabled {
   width: 120px;
   height: auto;
   display: block;
+  object-fit: contain;
 }
 
+/* 사이드 버튼 호버 효과 - 기울어짐 */
 .result-side-btn:hover {
   transform: rotate(5deg) scale(1.05);
 }
@@ -761,6 +875,18 @@ button:disabled {
   display: none;
 }
 
+/* 사이드 버튼 비활성화 상태 */
+.result-side-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(50%);
+}
+
+.result-side-btn:disabled:hover {
+  transform: none;
+}
+
+/* 스토리 제목 */
 .story-title {
   font-size: 1.6rem;
   font-weight: bold;
@@ -772,27 +898,28 @@ button:disabled {
   animation: fadeIn 0.5s ease;
 }
 
+/* 스토리 진행 상황 표시 */
 .story-progress {
   font-size: 0.9rem;
   color: #94a3b8;
 }
 
-/* 채팅 컨테이너 */
+/* 채팅 컨테이너 - 메시지 표시 영역 */
 .chat-container {
   background: var(--card-bg);
   border-radius: 20px;
-  width: 100%;
-  min-height: 350px;
-  max-height: 450px;
+  width: 600px;
+  height: 400px;
   overflow-y: auto;
   padding: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-sizing: border-box;
 }
 
-/* 채팅 메시지 */
+/* 채팅 메시지 - 아바타 + 말풍선 */
 .chat-message {
   display: flex;
   flex-direction: row;
@@ -801,6 +928,7 @@ button:disabled {
   animation: chatPopIn 0.4s ease;
 }
 
+/* 채팅 아바타 */
 .chat-avatar {
   flex-shrink: 0;
   width: 40px;
@@ -820,6 +948,7 @@ button:disabled {
   object-fit: cover;
 }
 
+/* 채팅 콘텐츠 - 작성자명 + 말풍선 */
 .chat-content {
   display: flex;
   flex-direction: column;
@@ -832,11 +961,12 @@ button:disabled {
   margin-bottom: 4px;
 }
 
+/* 채팅 말풍선 */
 .chat-bubble {
   background: #475569;
   padding: 12px 16px;
   border-radius: 15px;
-  border-top-left-radius: 5px;
+  border-top-left-radius: 5px; /* 왼쪽 상단 뾰족하게 */
   font-size: 1rem;
   line-height: 1.5;
   color: var(--text-white);
@@ -844,6 +974,7 @@ button:disabled {
   word-break: break-word;
 }
 
+/* 채팅 메시지 등장 애니메이션 */
 @keyframes chatPopIn {
   from {
     opacity: 0;
@@ -855,12 +986,14 @@ button:disabled {
   }
 }
 
+/* 결과 컨트롤 버튼 그룹 */
 .results-controls {
   display: flex;
   gap: 15px;
   margin-top: 10px;
 }
 
+/* 컨트롤 버튼 기본 스타일 */
 .control-btn {
   padding: 12px 30px;
   border-radius: 10px;
@@ -881,6 +1014,7 @@ button:disabled {
   transform: scale(0.98);
 }
 
+/* 주요 컨트롤 버튼 */
 .control-btn.primary {
   background: var(--accent-blue);
 }
@@ -891,6 +1025,7 @@ button:disabled {
   transform: none;
 }
 
+/* 스크린샷 버튼 */
 .control-btn.screenshot {
   background: #10b981;
   color: white;
@@ -900,15 +1035,14 @@ button:disabled {
   background: #059669;
 }
 
+/* 다시하기 버튼 - 이미지 버튼이므로 배경 제거 */
 #btn-restart {
-  margin-top: 20px;
-  background: var(--accent-yellow);
-  color: #000;
-  padding: 15px 40px;
-  font-size: 1.1rem;
-  width: auto;
+  margin-top: 10px;
+  background: transparent !important;
+  padding: 5px !important;
 }
 
+/* 제시어 하이라이트 (스토리 내 제시어 강조) */
 .prompt-highlight {
   color: var(--accent-yellow);
   font-weight: 900;
@@ -916,7 +1050,8 @@ button:disabled {
 }
 
 /* --------------------
-   Story Layout (게임 진행 화면 레이아웃)
+   스토리 작성 화면 레이아웃 (Story Layout)
+   - 좌우 사이드바 + 중앙 게임 영역
 -------------------- */
 .story-layout {
   display: flex;
@@ -932,7 +1067,7 @@ button:disabled {
   max-width: 650px;
 }
 
-/* 스토리 입력란 (입력란.png 배경) */
+/* 스토리 입력란 - 입력 필드 + 제출 버튼 */
 .story-input-row {
   display: flex;
   align-items: flex-start;
@@ -944,12 +1079,15 @@ button:disabled {
   flex: 1;
 }
 
+/* 스토리 입력란 배경 이미지 */
 .story-input-bg {
   width: 100%;
   height: auto;
   display: block;
+  object-fit: contain;
 }
 
+/* 스토리 텍스트 영역 - 배경 이미지 위에 배치 */
 .story-input-wrapper textarea {
   position: absolute;
   top: 50%;
@@ -975,6 +1113,7 @@ button:disabled {
   outline: none;
 }
 
+/* 스토리 제출 버튼 */
 .story-input-row .image-btn {
   width: auto;
   flex-shrink: 0;
@@ -985,7 +1124,10 @@ button:disabled {
   width: auto;
 }
 
-/* 플레이어 사이드바 */
+/* --------------------
+   플레이어 사이드바 (Player Sidebar)
+   - 게임 진행 중 좌우에 플레이어 표시
+-------------------- */
 .player-sidebar {
   display: flex;
   flex-direction: column;
@@ -994,10 +1136,12 @@ button:disabled {
   padding: 10px;
 }
 
+/* 왼쪽 사이드바 - 오른쪽 정렬 */
 .player-sidebar-left {
   align-items: flex-end;
 }
 
+/* 오른쪽 사이드바 - 왼쪽 정렬 */
 .player-sidebar-right {
   align-items: flex-start;
 }
@@ -1014,18 +1158,19 @@ button:disabled {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   position: relative;
   transition: transform 0.2s, box-shadow 0.2s;
-  
-  /* Fixed Size Constraints */
-  width: 100px; /* Fixed width */
-  min-height: 140px; /* Minimum height */
+
+  /* 고정 크기 */
+  width: 100px;
+  min-height: 140px;
   box-sizing: border-box;
 }
 
 .sidebar-player:hover {
   transform: scale(1.05);
-  z-index: 10; /* Ensure hover pops over others */
+  z-index: 10;
 }
 
+/* 사이드바 플레이어 아바타 */
 .sidebar-player .player-avatar {
   width: 60px;
   height: 60px;
@@ -1038,7 +1183,7 @@ button:disabled {
   border: 3px solid #475569;
   overflow: hidden;
   transition: border-color 0.3s;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 
 .sidebar-player .player-avatar img {
@@ -1047,20 +1192,22 @@ button:disabled {
   object-fit: cover;
 }
 
+/* 사이드바 플레이어 이름 */
 .sidebar-player .player-name {
   font-size: 0.85rem;
   font-weight: bold;
   text-align: center;
-  
-  /* Text Truncation */
+
+  /* 텍스트 말줄임 */
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  
+
   margin-top: 2px;
 }
 
+/* 사이드바 플레이어 상태 */
 .sidebar-player .player-status {
   font-size: 0.75rem;
   padding: 3px 8px;
@@ -1069,7 +1216,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 상태별 스타일 */
+/* 작성 중 상태 - 노란색 테두리 + 펄스 애니메이션 */
 .sidebar-player.writing .player-avatar {
   border-color: #fbbf24;
   box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
@@ -1081,6 +1228,7 @@ button:disabled {
   animation: pulse 1s infinite;
 }
 
+/* 완료 상태 - 녹색 테두리 */
 .sidebar-player.done .player-avatar {
   border-color: #34d399;
   box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
@@ -1091,6 +1239,7 @@ button:disabled {
   color: #000;
 }
 
+/* 펄스 애니메이션 - 깜빡임 효과 */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -1106,10 +1255,12 @@ button:disabled {
   z-index: 100;
 }
 
+/* 왼쪽 사이드바 - 이모티콘 오른쪽에 */
 .player-sidebar-left .sidebar-player .player-emoji {
   right: -40px;
 }
 
+/* 오른쪽 사이드바 - 이모티콘 왼쪽에 */
 .player-sidebar-right .sidebar-player .player-emoji {
   left: -40px;
 }
@@ -1119,6 +1270,7 @@ button:disabled {
   height: 40px;
 }
 
+/* 사이드바 이모티콘 팝업 애니메이션 */
 @keyframes emojiPopSide {
   0% {
     opacity: 0;
@@ -1178,6 +1330,7 @@ button:disabled {
   min-width: 180px;
 }
 
+/* 사이드바 이모티콘 버튼 */
 .sidebar-emoji-btn {
   width: 40px;
   height: 40px;
@@ -1205,7 +1358,8 @@ button:disabled {
 }
 
 /* --------------------
-   Player Status (작성 상태 표시)
+   플레이어 상태 표시 (Player Status)
+   - 작성 중/완료 상태 아이콘
 -------------------- */
 .player-status-container {
   margin-top: 15px;
@@ -1235,11 +1389,13 @@ button:disabled {
   font-size: 1rem;
 }
 
+/* 작성 중 - 깜빡임 효과 */
 .player-status-item.writing .status-icon {
   color: #fbbf24;
   animation: blink 1s infinite;
 }
 
+/* 완료 상태 */
 .player-status-item.done .status-icon {
   color: #34d399;
 }
@@ -1248,19 +1404,22 @@ button:disabled {
   opacity: 0.7;
 }
 
+/* 깜빡임 애니메이션 */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
 
 /* --------------------
-   Emoji (이모티콘)
+   이모티콘 시스템 (Emoji System)
+   - 게임 중 이모티콘 반응
 -------------------- */
 .emoji-section {
   margin-top: 15px;
   position: relative;
 }
 
+/* 이모티콘 토글 버튼 */
 .emoji-toggle-btn {
   width: auto;
   padding: 8px 16px;
@@ -1273,6 +1432,7 @@ button:disabled {
   background: #64748b;
 }
 
+/* 이모티콘 피커 팝업 */
 .emoji-picker {
   position: absolute;
   bottom: 100%;
@@ -1287,12 +1447,14 @@ button:disabled {
   min-width: 200px;
 }
 
+/* 이모티콘 목록 그리드 */
 .emoji-list {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
+/* 개별 이모티콘 버튼 */
 .emoji-btn {
   width: 50px;
   height: 50px;
@@ -1318,7 +1480,7 @@ button:disabled {
   object-fit: contain;
 }
 
-/* 받은 이모티콘 표시 영역 */
+/* 받은 이모티콘 표시 영역 (화면 하단 중앙) */
 .emoji-display {
   position: fixed;
   bottom: 100px;
@@ -1332,6 +1494,7 @@ button:disabled {
   z-index: 1000;
 }
 
+/* 떠오르는 이모티콘 */
 .emoji-floating {
   display: flex;
   flex-direction: column;
@@ -1348,6 +1511,7 @@ button:disabled {
   height: 60px;
 }
 
+/* 이모티콘 보낸 사람 이름 */
 .emoji-floating .emoji-sender {
   font-size: 0.8rem;
   color: var(--accent-yellow);
@@ -1357,6 +1521,7 @@ button:disabled {
   margin-top: 4px;
 }
 
+/* 이모티콘 떠오르는 애니메이션 */
 @keyframes emojiFloat {
   0% {
     opacity: 0;
@@ -1379,7 +1544,7 @@ button:disabled {
   }
 }
 
-/* 애니메이션 */
+/* 공통 애니메이션 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1391,7 +1556,8 @@ button:disabled {
 }
 
 /* --------------------
-   Avatar Selection (아바타 선택)
+   아바타 선택 (Avatar Selection)
+   - 입장 화면 아바타 그리드
 -------------------- */
 .avatar-selection {
   margin-bottom: 15px;
@@ -1405,6 +1571,7 @@ button:disabled {
   max-width: 280px;
 }
 
+/* 개별 아바타 아이템 */
 .avatar-item {
   width: 55px;
   height: 55px;
@@ -1425,6 +1592,7 @@ button:disabled {
   border-color: #64748b;
 }
 
+/* 선택된 아바타 */
 .avatar-item.selected {
   border-color: var(--accent-yellow);
   box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
@@ -1437,7 +1605,8 @@ button:disabled {
 }
 
 /* --------------------
-   Result Emoji Animation (결과 화면 이모티콘)
+   결과 화면 이모티콘 (Result Emoji Animation)
+   - 화면 전체에 떠오르는 이모티콘
 -------------------- */
 .result-emoji-section {
   display: flex;
@@ -1446,6 +1615,7 @@ button:disabled {
   margin-top: 20px;
 }
 
+/* 결과 화면 이모티콘 버튼 */
 .result-emoji-btn {
   width: 60px;
   height: 60px;
@@ -1469,7 +1639,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 결과 화면 이모티콘 컨테이너 (화면 전체) */
+/* 결과 화면 이모티콘 컨테이너 (화면 전체 오버레이) */
 .result-emoji-container {
   position: fixed;
   bottom: 0;
@@ -1510,6 +1680,7 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* 결과 이모티콘 상승 애니메이션 */
 @keyframes resultEmojiRise {
   0% {
     opacity: 0;
@@ -1529,7 +1700,8 @@ button:disabled {
 }
 
 /* --------------------
-   Image Buttons (이미지 버튼)
+   이미지 버튼 (Image Buttons)
+   - 이미지를 버튼으로 사용
 -------------------- */
 .image-btn {
   background: none !important;
@@ -1559,15 +1731,16 @@ button:disabled {
   display: block;
   height: auto;
   max-width: 100%;
+  object-fit: contain;
 }
 
-/* 입장 화면 버튼 이미지 */
+/* 입장 화면 버튼 이미지 크기 */
 #btn-create-room img,
 #btn-join-room img {
   width: 180px;
 }
 
-/* 로비 버튼 이미지 */
+/* 로비 버튼 이미지 크기 */
 #btn-start img,
 #btn-leave img {
   width: 140px;
@@ -1577,13 +1750,13 @@ button:disabled {
   width: 120px;
 }
 
-/* 키워드/스토리 제출 버튼 */
+/* 키워드/스토리 제출 버튼 크기 */
 #btn-submit-prompts img,
 #btn-submit-story img {
   width: 120px;
 }
 
-/* 결과 화면 버튼 */
+/* 결과 화면 버튼 크기 */
 #btn-prev img,
 #btn-next-story img {
   width: 140px;
@@ -1603,6 +1776,7 @@ button:disabled {
   max-width: 350px;
   height: auto;
   margin-bottom: 20px;
+  object-fit: contain;
 }
 
 /* 상태 아이콘 이미지 */
@@ -1610,6 +1784,7 @@ button:disabled {
   width: 24px;
   height: 24px;
   vertical-align: middle;
+  object-fit: contain;
 }
 
 .sidebar-status-icon {
@@ -1617,10 +1792,12 @@ button:disabled {
   height: 18px;
   vertical-align: middle;
   margin-right: 4px;
+  object-fit: contain;
 }
 
 /* --------------------
-   Room Code Display (방 코드 호버 복사)
+   방 코드 표시 (Room Code Display)
+   - 호버 시 복사하기 버튼으로 변경
 -------------------- */
 .room-code-container {
   position: relative;
@@ -1638,6 +1815,7 @@ button:disabled {
   transform: scale(0.98);
 }
 
+/* 방 코드 텍스트 - 이미지 중앙에 배치 */
 .room-code-container .room-code-text {
   position: absolute;
   top: 50%;
@@ -1650,18 +1828,23 @@ button:disabled {
   pointer-events: none;
 }
 
+/* 기본 방 코드 이미지 */
 .room-code-container .room-code-img {
   display: block;
   width: 180px;
   height: auto;
+  object-fit: contain;
 }
 
+/* 호버 시 복사하기 이미지 (기본 숨김) */
 .room-code-container .room-code-hover-img {
   display: none;
   width: 180px;
   height: auto;
+  object-fit: contain;
 }
 
+/* 호버 시 이미지 전환 */
 .room-code-container:hover .room-code-img {
   display: none;
 }
@@ -1675,24 +1858,30 @@ button:disabled {
 }
 
 /* --------------------
-   Page-specific Notebook Backgrounds (페이지별 공책 배경)
+   페이지별 공책 배경 (Notebook Backgrounds)
+   - 각 화면에 맞는 공책 이미지 배경
+   - contain으로 이미지가 잘리지 않도록 설정
 -------------------- */
+
 /* 메인 화면 (입장 화면) 공책 배경 */
 #screen-name .entry-container {
   background-image: url('./image/01_메인화면/공책.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
 }
 
-/* 방 코드 입력 화면 공책 배경 */
+/* 방 코드 입력 화면 공책 배경 (다른 플레이어의 방에 입장할 때) */
 #screen-waiting .card {
   background-image: url('./image/01_메인화면/공책.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
+  width: 400px;
+  height: 300px;
+  box-sizing: border-box;
 }
 
 #screen-waiting .card h2 {
@@ -1710,34 +1899,40 @@ button:disabled {
   color: white;
 }
 
-/* 로비 화면 공책 배경 */
+/* 로비 화면 공책 배경 (게임 시작 대기 화면) */
 #screen-lobby .lobby-container {
   background-image: url('./image/02_로비/공책.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
 }
 
-/* 스토리 작성 화면 공책 배경 */
+/* 스토리 작성 화면 공책 배경 (턴제 스토리 작성) */
 #screen-story .story-main .card.wide {
   background-image: url('./image/04_스토리 적기/공책.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
+  width: 650px;
+  height: 500px;
+  box-sizing: border-box;
 }
 
 /* 결과 화면 채팅 컨테이너 공책 배경 */
 #screen-results .chat-container {
   background-image: url('./image/05_엔딩/공책.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
 }
 
-/* 공책 배경 위 텍스트 가독성 개선 */
+/* --------------------
+   공책 배경 위 텍스트 가독성 개선
+   - 배경 이미지 위에서 텍스트가 잘 보이도록
+-------------------- */
 #screen-name .entry-container,
 #screen-lobby .lobby-container {
   color: #1e293b;
@@ -1760,7 +1955,7 @@ button:disabled {
   color: #64748b;
 }
 
-/* 로비 플레이어 카드 스타일 개선 */
+/* 로비 플레이어 카드 스타일 */
 #screen-lobby .player-card {
   background: rgba(255, 255, 255, 0.7);
   color: #1e293b;
@@ -1773,9 +1968,14 @@ button:disabled {
   text-shadow: none;
 }
 
-#screen-story .story-main .card.wide #story-so-far {
-  background: rgba(255, 255, 255, 0.7);
+/* 지금까지의 이야기 - 배경 없이 텍스트만, 가운데 정렬 */
+#story-so-far {
+  background: transparent;
   color: #1e293b;
+  text-align: center;
+  padding: 10px;
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
 #screen-story .story-main .card.wide textarea {
@@ -1797,4 +1997,3 @@ button:disabled {
 #screen-results .chat-container .chat-writer {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
-

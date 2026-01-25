@@ -110,10 +110,8 @@ let currentChainIndex = 0;   // 현재 스토리 인덱스
 let chatAnimationTimer = null; // 채팅 애니메이션 타이머
 let displayedEntryCount = 0;   // 현재 표시된 문장 수
 
-// TTS 관련
+// TTS 관련 (Web Speech API 사용)
 let ttsEnabled = true;       // TTS 활성화 여부
-let currentAudio = null;     // 현재 재생 중인 오디오
-let currentTTSId = 0;        // TTS 요청 ID (취소/중복 방지용)
 
 // 닉네임 색상 배열 (다양한 색상으로 구분)
 const NICKNAME_COLORS = [
@@ -161,14 +159,17 @@ function updatePromptUsageUI() {
   const textRaw = String(inputStoryText.value || "");
   const text = textRaw.replace(/\s+/g, ""); // 공백 제거
 
-  const chips = Array.from(myInboxPrompts.querySelectorAll(".result-item"));
-  for (const chip of chips) {
-    const keyRaw = String(chip.dataset.prompt || "");
+  const cards = Array.from(myInboxPrompts.querySelectorAll(".story-keyword-card"));
+  for (const card of cards) {
+    const textDiv = card.querySelector(".story-keyword-text");
+    if (!textDiv) continue;
+
+    const keyRaw = String(textDiv.dataset.prompt || "");
     const key = keyRaw.replace(/\s+/g, ""); // 공백 제거
     if (!key) continue;
 
     const used = text.includes(key);
-    chip.classList.toggle("used", used);
+    card.classList.toggle("used", used);
   }
 }
 
@@ -906,38 +907,64 @@ function createResultEmojiFloat(senderName, emojiContent, senderColor) {
 function renderPromptChips(container, items) {
   if (!container) return;
   container.innerHTML = "";
-  for (const t of items || []) {
-    const chip = document.createElement("div");
-    chip.className = "result-item";
-    chip.textContent = t;
-    chip.dataset.prompt = normalizePromptText(t);
-    chip.style.cursor = "pointer"; // 클릭 가능 표시
+
+  // 제시어가 없으면 부모 div 전체 숨기기 (첫 번째 라운드)
+  const hasPrompts = items && items.length > 0 && items.some(item => item && item.trim());
+  const parentDiv = container.parentElement;
+
+  if (!hasPrompts) {
+    if (parentDiv) parentDiv.style.display = "none";
+    return;
+  }
+
+  // 제시어가 있으면 표시
+  if (parentDiv) parentDiv.style.display = "";
+
+  // 카드 이미지 경로
+  const cardImages = [
+    "/image/03_키워드 적기/카드1.png",
+    "/image/03_키워드 적기/카드2.png",
+    "/image/03_키워드 적기/카드3.png"
+  ];
+
+  for (let i = 0; i < items.length && i < 3; i++) {
+    const t = items[i] || "";
+    if (!t.trim()) continue; // 빈 제시어는 건너뛰기
+
+    const card = document.createElement("div");
+    card.className = "story-keyword-card";
+
+    const img = document.createElement("img");
+    img.src = cardImages[i];
+    img.alt = `카드${i + 1}`;
+
+    const textDiv = document.createElement("div");
+    textDiv.className = "story-keyword-text";
+    textDiv.textContent = t;
+    textDiv.dataset.prompt = normalizePromptText(t);
+
+    card.appendChild(img);
+    card.appendChild(textDiv);
 
     // 클릭 시 textarea에 자동 입력
-    chip.addEventListener("click", () => {
+    card.style.cursor = "pointer";
+    card.addEventListener("click", () => {
       if (inputStoryText && !inputStoryText.disabled) {
         const currentText = inputStoryText.value;
-        const keyword = t;
 
-        // 현재 텍스트가 있으면 공백 추가, 없으면 그대로
         if (currentText.trim()) {
-          inputStoryText.value = currentText + " " + keyword;
+          inputStoryText.value = currentText + " " + t;
         } else {
-          inputStoryText.value = keyword;
+          inputStoryText.value = t;
         }
 
-        // textarea에 포커스
         inputStoryText.focus();
-
-        // 커서를 끝으로 이동
         inputStoryText.setSelectionRange(inputStoryText.value.length, inputStoryText.value.length);
-        
-        // 입력 이벤트 트리거 (작성 상태 및 자동저장 트리거)
         inputStoryText.dispatchEvent(new Event('input'));
       }
     });
 
-    container.appendChild(chip);
+    container.appendChild(card);
   }
 }
 
@@ -982,114 +1009,85 @@ function normalizePromptText(labelText) {
   return s.slice(idx + 1).trim();
 }
 
-// ---- TTS 함수 (TypeCast API 사용) ----
-// TTS 전면 취소 함수 (새로운 TTS 요청 전에 호출)
-function cancelTTS() {
-  currentTTSId++; // ID 증가시켜 이전 콜백 무효화
-  stopTTS();
-}
+// ---- TTS 함수 (Web Speech API 사용) ----
+// 한국어 음성 캐싱
+let koreanVoice = null;
 
-function stopTTS() {
-  if (currentAudio) {
-    try {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-    } catch (e) {
-      console.warn("TTS 정지 중 오류:", e);
-    }
-    currentAudio = null;
+// 음성 목록 로드 (페이지 로드 시)
+function loadVoices() {
+  if (!window.speechSynthesis) return;
+
+  const voices = window.speechSynthesis.getVoices();
+  // 한국어 음성 찾기 (우선순위: ko-KR > ko)
+  koreanVoice = voices.find(v => v.lang === 'ko-KR')
+             || voices.find(v => v.lang.startsWith('ko'))
+             || null;
+
+  if (koreanVoice) {
+    console.log("TTS 한국어 음성 로드됨:", koreanVoice.name);
   }
 }
 
+// 음성 목록이 비동기로 로드되는 경우 대비
+if (window.speechSynthesis) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+// TTS 취소 함수
+function cancelTTS() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+function stopTTS() {
+  cancelTTS();
+}
+
+// 텍스트 읽기 함수
 function speakText(text, onEndCallback) {
+  // TTS 비활성화 또는 텍스트 없으면 바로 콜백 호출
   if (!ttsEnabled || !text) {
-    // TTS 비활성화 또는 텍스트 없으면 바로 콜백 호출
     if (onEndCallback) onEndCallback();
     return;
   }
 
-  // 이전 TTS 중지 및 ID 갱신
-  cancelTTS();
-  const myId = currentTTSId; // 이 요청의 ID 캡처
-
-  // 서버에 TTS 요청
-  socket.emit("tts:request", { text }, (response) => {
-    // ID가 변경되었으면 (취소되었으면) 무시
-    if (myId !== currentTTSId) return;
-
-    if (!response) {
-      console.error("TTS 응답 없음");
-      if (onEndCallback) onEndCallback();
-      return;
-    }
-
-    if (!response.ok) {
-      console.error("TTS 요청 실패:", response.error);
-      if (onEndCallback) onEndCallback();
-      return;
-    }
-
-    try {
-      // Base64 오디오 데이터를 Audio 객체로 변환
-      const audioData = response.audioData;
-      const format = response.format || "mp3";
-      const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
-
-      const audioBlob = base64ToBlob(audioData, mimeType);
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const audio = new Audio(audioUrl);
-      currentAudio = audio;
-
-      // 오디오 재생 완료 시 콜백 호출
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (myId === currentTTSId) {
-          currentAudio = null;
-          if (onEndCallback) onEndCallback();
-        }
-      };
-
-      audio.onerror = (e) => {
-        console.error("오디오 재생 중 오류:", e);
-        URL.revokeObjectURL(audioUrl);
-        if (myId === currentTTSId) {
-          currentAudio = null;
-          if (onEndCallback) onEndCallback();
-        }
-      };
-
-      // 오디오 재생
-      audio.play().catch((e) => {
-        console.error("오디오 재생 실패:", e);
-        URL.revokeObjectURL(audioUrl);
-        if (myId === currentTTSId) {
-          currentAudio = null;
-          if (onEndCallback) onEndCallback();
-        }
-      });
-
-    } catch (e) {
-      console.error("TTS 처리 중 오류:", e);
-      if (myId === currentTTSId && onEndCallback) onEndCallback();
-    }
-  });
-}
-
-// Base64를 Blob으로 변환하는 헬퍼 함수
-function base64ToBlob(base64, mimeType) {
-  try {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
-  } catch (e) {
-    console.error("Base64 디코딩 오류:", e);
-    throw e;
+  // Web Speech API 지원 확인
+  if (!window.speechSynthesis) {
+    console.warn("Web Speech API를 지원하지 않는 브라우저입니다.");
+    if (onEndCallback) onEndCallback();
+    return;
   }
+
+  // 이전 TTS 중지
+  cancelTTS();
+
+  // 음성 발화 객체 생성
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ko-KR';
+  utterance.rate = 1.0;   // 속도 (0.1 ~ 10)
+  utterance.pitch = 1.0;  // 음높이 (0 ~ 2)
+  utterance.volume = 1.0; // 볼륨 (0 ~ 1)
+
+  // 한국어 음성 설정
+  if (koreanVoice) {
+    utterance.voice = koreanVoice;
+  }
+
+  // 발화 완료 시 콜백 호출
+  utterance.onend = () => {
+    if (onEndCallback) onEndCallback();
+  };
+
+  // 오류 처리
+  utterance.onerror = (e) => {
+    console.error("TTS 오류:", e.error);
+    if (onEndCallback) onEndCallback();
+  };
+
+  // 발화 시작
+  window.speechSynthesis.speak(utterance);
 }
 
 // 폭죽 효과 표시
@@ -1177,13 +1175,17 @@ function showFireworks(element) {
 function renderStorySoFar(entries, round) {
   if (!storySoFar) return;
 
+  const parentDiv = storySoFar.parentElement;
+
+  // 처음 라운드(round === 0)면 부모 div 전체 숨기기
   if (round === 0) {
     storySoFar.innerHTML = "";
-    storySoFar.classList.add("hidden");
+    if (parentDiv) parentDiv.style.display = "none";
     return;
   }
 
-  storySoFar.classList.remove("hidden");
+  // 라운드가 0이 아니면 표시
+  if (parentDiv) parentDiv.style.display = "";
 
   if (!entries || entries.length === 0) {
     storySoFar.textContent = "아직 아무도 작성하지 않았어.";
@@ -1274,7 +1276,7 @@ function displayStory(chainIndex) {
 
   // 제목 표시
   if (storyTitle) {
-    storyTitle.textContent = `${chain.ownerName}의 이야기`;
+    storyTitle.textContent = `${chain.ownerName}의 사생활`;
     storyTitle.style.animation = "none";
     storyTitle.offsetHeight;
     storyTitle.style.animation = "fadeIn 0.5s ease";
@@ -1295,7 +1297,7 @@ function displayStory(chainIndex) {
 
   // 제목 TTS 먼저 (에러 핸들링)
   try {
-    speakText(`${chain.ownerName}의 이야기`);
+    speakText(`${chain.ownerName}의 사생활`);
   } catch (e) {
     console.error("제목 TTS 재생 중 오류:", e);
   }
@@ -1427,22 +1429,28 @@ function updateResultButtons(isAnimating = false) {
 
   if (btnNextStory) {
     if (isHost) {
+      // 버튼을 숨기지 않고 항상 표시, 비활성화로 처리
+      btnNextStory.classList.remove("hidden");
       if (isLastStory && allDisplayed) {
-        btnNextStory.textContent = "완료!";
+        // 마지막 스토리에서 모든 문장 표시 완료 시 비활성화
         btnNextStory.disabled = true;
       } else {
-        btnNextStory.textContent = "다음 스토리 →";
         btnNextStory.disabled = isAnimating || !allDisplayed;
       }
-      btnNextStory.classList.remove("hidden");
     } else {
       btnNextStory.classList.add("hidden");
     }
   }
 
-  // 다시하기 버튼 (마지막 스토리에서 모든 문장 표시 완료 시, 방장만)
+  // 다시하기 버튼 (마지막 스토리에서 모든 문장 표시 완료 시 활성화, 방장만)
   if (btnRestart) {
-    btnRestart.classList.toggle("hidden", !(isLastStory && allDisplayed && isHost));
+    if (isHost) {
+      btnRestart.classList.remove("hidden");
+      // 마지막 스토리에서 모든 문장 표시 완료 시에만 활성화
+      btnRestart.disabled = !(isLastStory && allDisplayed);
+    } else {
+      btnRestart.classList.add("hidden");
+    }
   }
 }
 
