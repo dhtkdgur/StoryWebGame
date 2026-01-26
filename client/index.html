@@ -96,6 +96,15 @@
       </div>
     </section>
 
+    <!-- 카운트다운 화면 -->
+    <section id="screen-countdown" class="screen hidden">
+      <div class="card" style="text-align:center;">
+        <h2 style="margin-bottom:12px;">곧 시작합니다</h2>
+        <div id="countdown-number" style="font-size:72px; font-weight:800;">3</div>
+      </div>
+    </section>
+
+
     <!-- 3. 로비 -->
     <section id="screen-lobby" class="screen hidden">
       <div class="lobby-container">
@@ -220,7 +229,11 @@
         <div class="story-main">
           <div class="card wide">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h2>라운드 <span id="display-round">0</span> / <span id="display-total-rounds">0</span></h2>
+
+              <h2 id="round-label">
+                라운드 <span id="display-round">0</span> / <span id="display-total-rounds">0</span>
+              </h2>
+              
               <div id="display-timer" style="font-size: 24px; font-weight: bold; color: #ff6b6b;">20s</div>
             </div>
 

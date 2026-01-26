@@ -95,6 +95,11 @@ const btnResultThumbsup = $("btn-result-thumbsup");
 const btnResultClap = $("btn-result-clap");
 const resultEmojiContainer = $("result-emoji-container");
 
+// round label and countdown
+const roundLabel = $("round-label");
+const screenCountdown = $("screen-countdown");
+const countdownNumber = $("countdown-number");
+
 // ---- Local state ----
 let myName = "";
 let myAvatar = null; // 선택한 아바타 ID
@@ -102,6 +107,7 @@ let currentRoomState = null;
 let currentRoundPayload = null;
 let isWriting = false; // 작성 중 상태
 let writingTimeout = null; // 작성 중 타이머
+let lastPhase = null; // 이전 단계 추적용
 
 // 결과 화면 상태
 let resultData = null;       // 전체 결과 데이터
@@ -140,13 +146,50 @@ function getVisualLength(str) {
   return len;
 }
 
+
+// 제출 상태에 따른 입력 잠금
+function applyInputLocksFromState(state) {
+  if (!state) return;
+
+  const me = (state.players || []).find((p) => p.id === socket.id);
+  const phase = state.phase;
+
+  // prompt 단계: 제시어 제출 완료면 input 막기
+  if (phase === "prompt") {
+    const locked = !!me?.submitted?.prompts;
+    const inputs = document.querySelectorAll(".input-prompt");
+    inputs.forEach((el) => {
+      el.disabled = locked;
+    });
+    if (btnSubmitPrompts) btnSubmitPrompts.disabled = locked;
+  }
+
+  // story 단계: 스토리 제출 완료면 textarea 막기
+  if (phase === "story") {
+    const locked = !!me?.submitted?.story;
+    if (inputStoryText) inputStoryText.disabled = locked;
+    if (btnSubmitStory) btnSubmitStory.disabled = locked;
+
+    // 제출 완료면 "다른 플레이어 기다리는 중" 표시도 같이
+    if (storyWaitMsg) storyWaitMsg.classList.toggle("hidden", !locked);
+  }
+}
+
 // ---- UI helpers ----
 function showScreen(which) {
-  [screenName, screenLobby, screenWaiting, screenPrompts, screenStory, screenResults].forEach((s) =>
-    s?.classList.add("hidden")
-  );
+  [
+    screenName,
+    screenLobby,
+    screenWaiting,
+    screenCountdown,
+    screenPrompts,
+    screenStory,
+    screenResults
+  ].forEach((s) => s?.classList.add("hidden"));
+
   if (which) which.classList.remove("hidden");
 }
+
 
 function alertError(msg) {
   alert(msg);
@@ -1505,13 +1548,17 @@ function syncResultsDisplay(chainIndex) {
   displayStory(chainIndex);
 }
 
+
 function goByPhase(state) {
   if (!state) return;
 
   if (displayRoomCode) displayRoomCode.textContent = `#${state.roomId}`;
   renderPlayers(state.players || [], state.hostId);
 
-  
+  if (state.phase === "countdown") {
+  showScreen(screenCountdown);
+  return;
+  }
 
   if (btnStart) btnStart.disabled = socket.id !== state.hostId;
 
@@ -1533,20 +1580,20 @@ if (state.phase === "lobby") {
 
   if (state.phase === "prompt") {
     showScreen(screenPrompts);
+    
+    const me = (state.players || []).find((p) => p.id === socket.id);
 
-    // 키워드 입력 필드 초기화 (다시하기 시)
-    const promptInputs = document.querySelectorAll(".input-prompt");
-    promptInputs.forEach(input => {
-      input.value = "";
-    });
+    if (lastPhase !== "prompt" && !me?.submitted?.prompts) {
+      const promptInputs = document.querySelectorAll(".input-prompt");
+      promptInputs.forEach((input) => (input.value = ""));
+    }    
 
     // 플레이어 사이드바 렌더링 (키워드 화면)
     renderPromptsSidebars(state.players, {});
 
     if (btnSubmitPrompts) btnSubmitPrompts.disabled = false;
     if (waitMsg) waitMsg.classList.add("hidden");
-
-    const me = (state.players || []).find((p) => p.id === socket.id);
+    
     if (me?.submitted?.prompts) {
       if (btnSubmitPrompts) btnSubmitPrompts.disabled = true;
       if (waitMsg) waitMsg.classList.remove("hidden");
@@ -1581,10 +1628,25 @@ socket.on("disconnect", () => {
   showScreen(screenName);
 });
 
+// 방 상태 업데이트
+socket.on("game:countdown", ({ secondsLeft }) => {
+  if (countdownNumber) countdownNumber.textContent = String(secondsLeft);
+  showScreen(screenCountdown);
+});
+
+socket.on("game:countdownEnd", () => {
+  // 아무것도 안 해도 됨 (room:state로 prompt로 넘어가면서 화면 전환됨)
+});
+
+
 socket.on("room:state", (state) => {
   console.log("room:state", state);
   currentRoomState = state;
   goByPhase(state);
+  
+  // 제출 상태에 따른 입력 잠금
+  applyInputLocksFromState(state);
+  lastPhase = state.phase;
 });
 
 socket.on("game:aborted", ({ reason }) => {
@@ -1602,10 +1664,33 @@ socket.on("story:round", (payload) => {
 
   currentRoundPayload = payload;
   const currentRound = payload.round ?? 0;
+  const totalRounds = payload.totalRounds ?? 0;
 
-  if (displayRound) displayRound.textContent = String(currentRound + 1);
-  if (displayTotalRounds) displayTotalRounds.textContent = String(payload.totalRounds ?? 0);
+  const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
 
+  // 라운드 표기 UI
+
+  if (isLastRound) {
+    if (roundLabel) roundLabel.textContent = "마지막 라운드";
+  } else {
+    if (roundLabel) {
+      // 원래 형식으로 되돌리기 (HTML에 span이 있으니 innerHTML로 복구)
+      roundLabel.innerHTML = `라운드 <span id="display-round"></span> / <span id="display-total-rounds"></span>`;
+    }
+    // 복구 후 다시 잡기
+    const dr = document.getElementById("display-round");
+    const dt = document.getElementById("display-total-rounds");
+    if (dr) dr.textContent = String(currentRound + 1);
+    if (dt) dt.textContent = String(totalRounds);
+  }
+
+  // 혹시 다른 곳에서 displayRound/displayTotalRounds를 계속 쓰고 있으면 유지
+  if (!isLastRound) {
+    if (displayRound) displayRound.textContent = String(currentRound + 1);
+    if (displayTotalRounds) displayTotalRounds.textContent = String(totalRounds);
+  }
+
+  // 제시어 카드 렌더링
   renderPromptChips(myInboxPrompts, payload.inboxPrompts || []);
 
   if (currentRound === 0) {
@@ -1618,22 +1703,12 @@ socket.on("story:round", (payload) => {
     renderStorySoFar(payload.chainEntries || [], currentRound);
   }
 
-  // 입력란 초기화 및 재활성화
-  if (inputStoryText) {
-    inputStoryText.value = "";
-    inputStoryText.disabled = false;
-    inputStoryText.style.opacity = "1";
-    inputStoryText.style.cursor = "text";
-  }
-  // 제시어 사용 현황 UI 갱신
+  if (inputStoryText) inputStoryText.value = "";
   updatePromptUsageUI();
 
-  // 버튼/메시지 초기화
   if (btnSubmitStory) btnSubmitStory.disabled = false;
-  // 대기 메시지 숨기기
   if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
 
-  // 작성 상태 초기화
   isWriting = false;
   if (writingTimeout) clearTimeout(writingTimeout);
 
@@ -1642,6 +1717,9 @@ socket.on("story:round", (payload) => {
     renderPlayerStatus(currentRoomState.players, {});
     renderPlayerSidebars(currentRoomState.players, {});
   }
+  
+  // 입력 잠금 상태 적용
+  applyInputLocksFromState(currentRoomState);
 
   showScreen(screenStory);
 });
@@ -1947,6 +2025,10 @@ btnSubmitPrompts?.addEventListener("click", () => {
       if (waitMsg) waitMsg.classList.add("hidden");
       return alertError(`제시어 제출 실패: ${res?.error || "UNKNOWN"}`);
     }
+
+  // 성공 즉시 잠금
+  const inputs = document.querySelectorAll(".input-prompt");
+  inputs.forEach((el) => (el.disabled = true));    
   });
 });
 
@@ -1964,12 +2046,8 @@ btnSubmitStory?.addEventListener("click", () => {
       return alertError(`제출 실패: ${res?.error || "UNKNOWN"}`);
     }
 
-    // 제출 성공 시 textarea 비활성화 (수정 불가)
-    if (inputStoryText) {
-      inputStoryText.disabled = true;
-      inputStoryText.style.opacity = "0.6";
-      inputStoryText.style.cursor = "not-allowed";
-    }
+  // 성공 즉시 잠금
+  if (inputStoryText) inputStoryText.disabled = true;
   });
 });
 
