@@ -554,9 +554,9 @@ function assignPrompts(room) {
 
     // 카드 객체를 텍스트로 변환
     const finalPrompts = picked.map((card) => {
-      if (card.type === "default") return `기본: ${card.text}`;
-      if (card.type === "custom") return `커스텀: ${card.text}`;
-      if (card.type === "name") return `이름: ${card.text}`;
+      if (card.type === "default") return `${card.text}`;
+      if (card.type === "custom") return `${card.text}`;
+      if (card.type === "name") return `${card.text}`;
       return card.text;
     });
 

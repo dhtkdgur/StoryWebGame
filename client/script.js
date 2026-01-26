@@ -923,6 +923,7 @@ function displayResultEmoji(senderName, emojiType) {
   }
 }
 
+
 // 개별 이모티콘 요소 생성
 function createResultEmojiFloat(senderName, emojiContent, senderColor) {
   const container = document.createElement("div");

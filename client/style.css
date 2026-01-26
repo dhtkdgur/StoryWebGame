@@ -1105,7 +1105,7 @@ button:disabled {
 /* 왼쪽 고정 폭 패널 (이모티콘 영역 조정) */
 #screen-results .results-left-panel {
   position: absolute;
-  left: -80px;    
+  left: 400px;    
   top: 140px;       
   width: auto;
   height: auto;
@@ -1135,7 +1135,7 @@ button:disabled {
 /* 포스트잇 버튼을 공책 위에 붙이기 */
 #screen-results .results-right-panel {
   position: absolute;
-  right: -80px; 
+  right: 480px; 
   bottom: 70px;
 }
 
@@ -2243,6 +2243,7 @@ button:disabled {
   overflow: hidden;
   z-index: 1000;
 }
+
 
 /* 올라오는 이모티콘 아이템 */
 .result-emoji-float {
