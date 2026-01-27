@@ -34,23 +34,42 @@
    - 페이지 전체 레이아웃 설정
    - 배경 이미지 및 폰트 설정
 -------------------- */
+
+/* 기본 body 배경 (나머지 화면용) */
 body {
   margin: 0;
   font-family: 'Arial', sans-serif;
   background-color: var(--bg-color);
-  /* 배경 이미지 설정 */
-  background-image: url('./image/00_전체/배경.png');
+  background-image: url('./image/00_전체/Main_BackGround_02.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text-white);
-  /* 중앙 정렬 레이아웃 */
+
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+
+  background-position: center -10px;
+  background-size: 104%;
 }
+
+/* 첫화면, 대기실 전용 배경 */
+body.bg-main {
+  background-image: url("/image/00_전체/Main_BackGround.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+
+  background-position: center -10px;
+  background-size: 104%;
+}
+
+
+
 
 /* 화면(섹션) - display:none으로 관리되는 각 화면의 기본 레이아웃 */
 .screen {
@@ -64,26 +83,6 @@ body {
 .hidden {
   display: none !important;
 }
-
-/* --------------------
-   전역 로고 (Global Logo)
-   - 모든 화면 상단 중앙에 고정 표시
--------------------- */
-#global-logo {
-  position: fixed;
-  top: 150px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  pointer-events: none; /* 클릭 이벤트 무시 */
-}
-
-.global-logo-img {
-  max-width: 300px;
-  height: auto;
-  object-fit: contain;
-}
-
 /* 앱 컨테이너 - 로고 공간 확보를 위한 상단 패딩 */
 #app {
   padding-top: 120px;
@@ -368,7 +367,6 @@ button:disabled {
   /* 공책 이미지 비율에 맞춰 크기 설정 */
   width: 900px;
   height: 600px;
-  background-image: url('./image/01_메인화면/공책.png');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -634,51 +632,6 @@ button:disabled {
 }
 
 
-/* --- [장식 요소] 볼펜, 클립, 형광펜 위치 잡기 --- */
-/* (entry-container 기준 absolute) */
-
-/* 볼펜: 오른쪽 하단 */
-.pen-decoration {
-  position: absolute;
-  bottom: -20px;
-  right: -50px;
-  width: 150px;
-  height: auto;
-  transform: rotate(-15deg);
-  z-index: 10;
-  filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3));
-  object-fit: contain;
-  pointer-events: none;
-}
-
-/* 클립: 오른쪽 상단 (종이에 끼운 느낌) */
-.clip-decoration {
-  position: absolute;
-  top: -20px;
-  right: 30px; /* 오른쪽 페이지 상단 */
-  width: 100px;
-  height: auto;
-  transform: rotate(10deg);
-  z-index: -1;
-  filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
-  object-fit: contain;
-  pointer-events: none;
-}
-
-/* 형광펜: 왼쪽 하단 (배경 느낌) */
-.highlighter-decoration {
-  position: absolute;
-  bottom: 100px;
-  left: -40px;
-  width: 200px;
-  height: auto;
-  transform: rotate(10deg);
-  z-index: -1; /* 공책 뒤로 보낼지 앞으로 보낼지 결정 (현재는 뒤쪽 느낌) */
-  object-fit: contain;
-  pointer-events: none;
-}
-
-
 
 /* 로비 버튼 색상 */
 #btn-copy {
@@ -719,8 +672,6 @@ button:disabled {
   position: relative;
   width: 900px;
   height: 600px;
-  /* 경로 수정: ./image/02_로비/공책.png */
-  background-image: url('./image/02_로비/공책.png');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -751,6 +702,8 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   padding-top: 10px;
+
+  padding-top: 40px;
 }
 
 .lobby-left h2 {
@@ -2459,7 +2412,6 @@ button:disabled {
 
 /* 메인 화면 (입장 화면) 공책 배경 */
 #screen-name .entry-container {
-  background-image: url('./image/01_메인화면/공책.png');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -2505,7 +2457,6 @@ button:disabled {
 
 /* 로비 화면 공책 배경 (게임 시작 대기 화면) */
 #screen-lobby .lobby-container {
-  background-image: url('./image/02_로비/공책.png');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;

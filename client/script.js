@@ -188,6 +188,10 @@ function showScreen(which) {
   ].forEach((s) => s?.classList.add("hidden"));
 
   if (which) which.classList.remove("hidden");
+
+  // 첫화면/대기실에서만 통합 배경 적용
+  const useMainBg = (which === screenName || which === screenLobby);
+  document.body.classList.toggle("bg-main", useMainBg);
 }
 
 
