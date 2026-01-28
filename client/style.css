@@ -1495,6 +1495,8 @@ button:disabled {
   justify-content: flex-start;
   padding-top: 20px;
   gap: 15px;
+  
+  min-height: 0;
 }
 
 /* 이전 이야기 텍스트 (작게 표시) */
@@ -1506,6 +1508,15 @@ button:disabled {
   margin-top: -40px;
   max-width: 80%;
   line-height: 1.4;
+
+  flex: 1 1 auto;      /* 위 텍스트가 남는 공간을 먹고 */
+  min-height: 0;       /* 스크롤 가능하게 */
+  overflow-y: auto;
+
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
 }
 
 /* 포스트잇 컨테이너 */
@@ -1514,7 +1525,11 @@ button:disabled {
   justify-content: center;
   gap: 20px;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 10px;
+
+  flex: 0 0 170px;   /* 포스트잇 영역 높이 고정(160~200 사이로 조절) */
+  min-height: 170px; /* 보험 */
+  align-items: flex-start;
 }
 
 /* 개별 포스트잇 카드 스타일 (실제 이미지 사용) */
@@ -1527,7 +1542,7 @@ button:disabled {
   justify-content: center;
   cursor: pointer;
   transition: transform 0.2s;
-  background: transparent;
+  background: transparent; 
 }
 
 /* 카드 이미지 표시 */
