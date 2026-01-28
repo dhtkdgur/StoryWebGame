@@ -696,14 +696,20 @@ function getAvatarById(avatarId) {
 // 이모티콘 목록 (나중에 커스텀 이미지로 교체 가능)
 // type: "emoji" = 기본 이모지, "image" = 커스텀 이미지
 const EMOJI_LIST = [
-  { id: "laugh", type: "emoji", content: "😂" },
-  { id: "heart", type: "emoji", content: "❤️" },
-  { id: "thumbsup", type: "emoji", content: "👍" },
-  { id: "clap", type: "emoji", content: "👏" },
-  { id: "fire", type: "emoji", content: "🔥" },
-  { id: "thinking", type: "emoji", content: "🤔" },
-  { id: "cry", type: "emoji", content: "😭" },
-  { id: "surprise", type: "emoji", content: "😱" },
+  { id: "emoj1", type: "emoji", content: "🤣" },
+  { id: "emoj2", type: "emoji", content: "😡" },
+  { id: "emoj3", type: "emoji", content: "☠️" },
+  { id: "emoj4", type: "emoji", content: "🤔" },
+  { id: "emoj5", type: "emoji", content: "🙌" },
+
+  { id: "emoj6", type: "emoji", content: "🥱" },
+  { id: "emoj7", type: "emoji", content: "😴" },
+  { id: "emoj8", type: "emoji", content: "😘" },
+  { id: "emoj9", type: "emoji", content: "😥" },
+  { id: "emoj10", type: "emoji", content: "😭" },
+
+  { id: "emoj11", type: "emoji", content: "👍" },
+  { id: "emoj12", type: "emoji", content: "👎" },
 ];
 
 // 이모티콘 목록 렌더링 (전역 이모지 리스트용 - 기존 호환)
