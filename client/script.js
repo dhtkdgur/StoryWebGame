@@ -1972,9 +1972,21 @@ const btnJoinInline = document.getElementById("btn-join-inline");
 btnJoinRoom?.addEventListener("click", () => {
   if (!ensureName()) return;
 
-  joinInline?.classList.remove("hidden");
-  setTimeout(() => roomCodeInputInline?.focus(), 0);
+  const isOpen = !joinInline?.classList.contains("hidden");
+
+  if (isOpen) {
+    // 다시 원래 상태로
+    joinInline?.classList.add("hidden");
+    btnJoinInline?.classList.add("hidden");
+    if (roomCodeInputInline) roomCodeInputInline.value = "";
+  } else {
+    // 코드 입력 UI 열기
+    joinInline?.classList.remove("hidden");
+    btnJoinInline?.classList.remove("hidden");
+    setTimeout(() => roomCodeInputInline?.focus(), 0);
+  }
 });
+
 
 function joinRoomWith(roomId) {
   if (!ensureName()) return;
@@ -1984,8 +1996,11 @@ function joinRoomWith(roomId) {
 
   socket.emit("room:join", { roomId: rid, name: myName, avatar: myAvatar }, (res) => {
     if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+
     // 인라인 닫기
     joinInline?.classList.add("hidden");
+    btnJoinInline?.classList.add("hidden");
+
     if (roomCodeInputInline) roomCodeInputInline.value = "";
 
     if (res.state) {
