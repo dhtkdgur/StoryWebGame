@@ -697,26 +697,12 @@ function startRound(roomId) {
         const p = currentRoom.players[sid];
         let finalText = "";
         let usedKeywords = [];
+        const cards = currentRoom.game.inboxPromptCards?.[sid] || [];
 
         // 1. 드래프트(작성 중이던 내용)가 있으면 우선 사용
         if (p && p.draftStory && typeof p.draftStory === "string" && p.draftStory.trim().length > 0) {
           finalText = p.draftStory.trim();
-          
-          // 키워드 분석
-          const cards = currentRoom.game.inboxPromptCards?.[sid] || [];
           usedKeywords = getUsedKeywordsFromCards(finalText, cards);
-
-          // 사용된 커스텀 카드 처리
-          const normalize = (s) => String(s || "").replace(/\s+/g, "");
-          const submittedText = normalize(finalText);
-          
-          for (const card of cards) {
-            if (!card || card.type !== "custom") continue;
-            const key = normalize(card.text);
-            const used = key && submittedText.includes(key);
-            if (used) currentRoom.game.usedCustomPromptSet.add(card.id);
-          }
-
         } else {
           // 2. 드래프트도 없으면 랜덤 자동 생성
           // 라운드0이면 자유 시작 기본문장
@@ -724,27 +710,35 @@ function startRound(roomId) {
             const base = DEFAULT_SENTENCES_ROUND0[Math.floor(Math.random() * DEFAULT_SENTENCES_ROUND0.length)];
             finalText = base;
           } else {
-            // 라운드1+면 "왼쪽 카드 1개"를 강제로 끼워넣는 버전
+            // 라운드1+면 "랜덤 카드 1개"를 끼워넣는 버전
             const prompts = currentRoom.game.inboxPrompts?.[sid] || [];
-            const first = prompts[0] ? String(prompts[0]) : "";
-            const keyword = first.includes(":") ? first.split(":").slice(1).join(":").trim() : first.trim();
+            const pick = prompts.length > 0 ? String(prompts[Math.floor(Math.random() * prompts.length)]) : "";
+            const keyword = pick.includes(":") ? pick.split(":").slice(1).join(":").trim() : pick.trim();
 
             const base = DEFAULT_SENTENCES_LATER[Math.floor(Math.random() * DEFAULT_SENTENCES_LATER.length)];
             const autoText = keyword ? `${base} ${keyword}` : base;
-
-            const normalize = (s) => String(s || "").replace(/\s+/g, "");
-            const submittedText = normalize(autoText);
-
-            const cards = currentRoom.game.inboxPromptCards?.[sid] || [];
-            for (const card of cards) {
-              if (!card || card.type !== "custom") continue;
-              const key = normalize(card.text);
-              const used = key && submittedText.includes(key);
-              if (used) currentRoom.game.usedCustomPromptSet.add(card.id);
-            }
-            
             usedKeywords = getUsedKeywordsFromCards(autoText, cards);
             finalText = autoText;
+          }
+        }
+
+        // 자동 제출 시에도 키워드가 하나도 없으면 랜덤 키워드 추가 (형광펜 표시 보장)
+        if (r > 0 && cards.length > 0 && usedKeywords.length === 0) {
+          const randomCard = cards[Math.floor(Math.random() * cards.length)];
+          if (randomCard && randomCard.text) {
+            finalText = finalText ? `${finalText} ${randomCard.text}` : String(randomCard.text);
+            usedKeywords = getUsedKeywordsFromCards(finalText, cards);
+          }
+        }
+
+        // 사용된 커스텀 카드 처리
+        if (r > 0 && cards.length > 0) {
+          const submittedText = normalizeNoSpace(finalText);
+          for (const card of cards) {
+            if (!card || card.type !== "custom") continue;
+            const key = normalizeNoSpace(card.text);
+            const used = key && submittedText.includes(key);
+            if (used) currentRoom.game.usedCustomPromptSet.add(card.id);
           }
         }
 

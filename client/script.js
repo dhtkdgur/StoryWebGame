@@ -1742,6 +1742,7 @@ socket.on("story:round", (payload) => {
   if (inputStoryText) inputStoryText.value = "";
   updatePromptUsageUI();
 
+  if (inputStoryText) inputStoryText.disabled = false;
   if (btnSubmitStory) btnSubmitStory.disabled = false;
   if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
 
@@ -1754,8 +1755,7 @@ socket.on("story:round", (payload) => {
     renderPlayerSidebars(currentRoomState.players, {});
   }
   
-  // 입력 잠금 상태 적용
-  applyInputLocksFromState(currentRoomState);
+  // 입력 잠금 상태는 room:state에서 동기화
 
   showScreen(screenStory);
 });
@@ -1771,17 +1771,6 @@ socket.on("prompt:timer", ({ secondsLeft }) => {
 socket.on("story:timer", ({ secondsLeft }) => {
   if (displayTimer) {
     displayTimer.textContent = `${secondsLeft}s`;
-  }
-
-  // 타이머 종료 시 (0초) 작성한 내용 자동 제출
-  if (secondsLeft === 0) {
-    const text = String(inputStoryText?.value || "").trim();
-
-    // 버튼이 비활성화되지 않았고 텍스트가 있으면 자동 제출
-    if (btnSubmitStory && !btnSubmitStory.disabled && text) {
-      console.log("타이머 종료: 자동 제출");
-      btnSubmitStory.click();
-    }
   }
 });
 
