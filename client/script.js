@@ -1749,10 +1749,14 @@ socket.on("story:round", (payload) => {
   isWriting = false;
   if (writingTimeout) clearTimeout(writingTimeout);
 
-  // 플레이어 상태 초기 렌더링 (사이드바)
+  // 플레이어 상태 초기 렌더링 (라운드 시작 시 제출 상태 초기화 표시)
   if (currentRoomState && currentRoomState.players) {
-    renderPlayerStatus(currentRoomState.players, {});
-    renderPlayerSidebars(currentRoomState.players, {});
+    const resetPlayers = currentRoomState.players.map((p) => ({
+      ...p,
+      submitted: { ...(p.submitted || {}), story: false },
+    }));
+    renderPlayerStatus(resetPlayers, {});
+    renderPlayerSidebars(resetPlayers, {});
   }
   
   // 입력 잠금 상태는 room:state에서 동기화
