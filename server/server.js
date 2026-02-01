@@ -722,14 +722,10 @@ function startRound(roomId) {
           }
         }
 
-        // 자동 제출 시에도 키워드가 하나도 없으면 랜덤 키워드 추가 (형광펜 표시 보장)
-        if (r > 0 && cards.length > 0 && usedKeywords.length === 0) {
-          const randomCard = cards[Math.floor(Math.random() * cards.length)];
-          if (randomCard && randomCard.text) {
-            finalText = finalText ? `${finalText} ${randomCard.text}` : String(randomCard.text);
-            usedKeywords = getUsedKeywordsFromCards(finalText, cards);
-          }
-        }
+        // 자동 제출 시에도 키워드 미포함이면 자동 추가 + 사용 키워드 재계산
+        const ensured = ensureKeywordUsage(finalText, cards, r);
+        finalText = ensured.finalText;
+        usedKeywords = ensured.usedKeywords;
 
         // 사용된 커스텀 카드 처리
         if (r > 0 && cards.length > 0) {
@@ -852,6 +848,26 @@ function getUsedKeywordsFromCards(submittedText, cards) {
 
   // 중복 제거
   return Array.from(new Set(list));
+}
+
+function ensureKeywordUsage(text, cards, round) {
+  let finalText = String(text ?? "").trim();
+  const arr = Array.isArray(cards) ? cards : [];
+  let usedKeywords = getUsedKeywordsFromCards(finalText, arr);
+
+  if (round > 0 && arr.length > 0) {
+    const hasExactKeyword = arr.some((card) => card?.text && finalText.includes(card.text));
+    if (!hasExactKeyword) {
+      const randomCard = arr[Math.floor(Math.random() * arr.length)];
+      if (randomCard?.text) {
+        finalText = finalText ? `${finalText} ${randomCard.text}` : String(randomCard.text);
+      }
+    }
+
+    usedKeywords = getUsedKeywordsFromCards(finalText, arr);
+  }
+
+  return { finalText, usedKeywords };
 }
 
 // ====================================================================
@@ -1072,7 +1088,7 @@ io.on("connection", (socket) => {
 
   // ------------------------------------------------------------
   // 스토리 제출
-  socket.on("story:submit", ({ text }, ack) => {
+  socket.on("story:submit", ({ text, round }, ack) => {
     try {
       const rid = socket.data.roomId;
       const room = rid ? rooms[rid] : null;
@@ -1086,14 +1102,17 @@ io.on("connection", (socket) => {
       let finalText = String(text ?? "").trim();
       if (!finalText) return ack?.({ ok: false, error: "TEXT_REQUIRED" });
 
-      const round = room.game.round;
+      const currentRound = room.game.round;
+      if (typeof round === "number" && round !== currentRound) {
+        return ack?.({ ok: false, error: "ROUND_MISMATCH" });
+      }
       const chainId = room.game.chainForPlayer[socket.id];
       if (!chainId) return ack?.({ ok: false, error: "CHAIN_NOT_ASSIGNED" });
 
-      const set = room.game.submittedStory[round];
-      if (!set) room.game.submittedStory[round] = new Set();
+      const set = room.game.submittedStory[currentRound];
+      if (!set) room.game.submittedStory[currentRound] = new Set();
 
-      if (room.game.submittedStory[round].has(socket.id)) {
+      if (room.game.submittedStory[currentRound].has(socket.id)) {
         return ack?.({ ok: false, error: "ALREADY_SUBMITTED" });
       }
 
@@ -1101,18 +1120,12 @@ io.on("connection", (socket) => {
       if (!chain) return ack?.({ ok: false, error: "CHAIN_NOT_FOUND" });
 
       const playerCards = room.game.inboxPromptCards?.[socket.id] || [];
-      let usedKeywords = getUsedKeywordsFromCards(finalText, playerCards);
-
-      if (round > 0 && usedKeywords.length === 0 && playerCards.length > 0) {
-        const randomCard = playerCards[Math.floor(Math.random() * playerCards.length)];
-        if (randomCard && randomCard.text) {
-          finalText += ` ${randomCard.text}`; // 띄어쓰기 후 키워드 추가
-          usedKeywords = getUsedKeywordsFromCards(finalText, playerCards);
-        }
-      }
+      const ensured = ensureKeywordUsage(finalText, playerCards, currentRound);
+      finalText = ensured.finalText;
+      let usedKeywords = ensured.usedKeywords;
 
       // 사용된 '커스텀' 카드 ID를 usedCustomPromptSet에 기록
-      if (round > 0) {
+      if (currentRound > 0) {
         const usedKeywordTexts = new Set(usedKeywords);
         for (const card of playerCards) {
           if (card.type === 'custom' && usedKeywordTexts.has(card.text)) {
@@ -1122,13 +1135,13 @@ io.on("connection", (socket) => {
       }
 
       chain.entries.push({
-        round,
+        round: currentRound,
         writerId: socket.id,
         text: finalText,
         usedKeywords,
       });
 
-      room.game.submittedStory[round].add(socket.id);
+      room.game.submittedStory[currentRound].add(socket.id);
       p.submitted.story = true;
 
       // 작성 상태 해제
@@ -1143,7 +1156,7 @@ io.on("connection", (socket) => {
       // 모든 플레이어가 제출했는지 확인 (유령 플레이어 방지: 현재 players 기준)
       const need = Object.values(room.players).filter((p) => !p.disconnected).length;
 
-      if (room.game.submittedStory[round].size < need) return;
+      if (room.game.submittedStory[currentRound].size < need) return;
 
       // 타이머 정리(전원 제출로 라운드 종료)
       if (room.game.timerInterval) {
@@ -1152,7 +1165,7 @@ io.on("connection", (socket) => {
       }
 
       // 라운드 종료 -> 다음 라운드 or 결과
-      const nextRound = round + 1;
+      const nextRound = currentRound + 1;
       if (nextRound >= room.game.totalRounds) {
         room.phase = "result";
         emitRoomState(rid);

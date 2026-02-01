@@ -34,7 +34,9 @@ const menuClose = $("menu-close");
 const menuOverlay = $("menu-overlay");
 const bgmVolumeSlider = $("bgm-volume");
 const bgmVolumeValue = $("bgm-volume-value");
-const bgmMuteToggle = $("bgm-mute-toggle");
+const sfxVolumeSlider = $("sfx-volume");
+const sfxVolumeValue = $("sfx-volume-value");
+const masterMuteToggle = $("master-mute-toggle");
 
 // lobby
 const displayRoomCode = $("display-room-code");
@@ -205,6 +207,7 @@ function showScreen(which) {
 
 
 function alertError(msg) {
+  playSound('error');
   alert(msg);
 }
 
@@ -523,6 +526,7 @@ function createSidebarPlayer(player, writingStatus, isLeftSide, screenType = "st
     renderSidebarEmojiPicker(emojiPickerDiv);
 
     emojiToggleBtn.addEventListener("click", (e) => {
+      playSound('click');
       e.stopPropagation();
       
       const isHidden = emojiPickerDiv.classList.contains("hidden");
@@ -694,7 +698,7 @@ function getAvatarById(avatarId) {
 
 // ---- 이모티콘 관련 ----
 // 이모티콘 목록 (나중에 커스텀 이미지로 교체 가능)
-// type: "emoji" = 기본 이모지, "image" = 커스텀 이미지
+// type: "emoji" = 기본 이모지, "text" = 글씨 이모티콘
 const EMOJI_LIST = [
   { id: "emoj1", type: "emoji", content: "🤣" },
   { id: "emoj2", type: "emoji", content: "😡" },
@@ -710,6 +714,14 @@ const EMOJI_LIST = [
 
   { id: "emoj11", type: "emoji", content: "👍" },
   { id: "emoj12", type: "emoji", content: "👎" },
+
+  // 글씨 이모티콘 추가
+  { id: "text1", type: "text", content: "대박" },
+  { id: "text2", type: "text", content: "ㅋㅋㅋ" },
+  { id: "text3", type: "text", content: "뭐해" },
+  { id: "text4", type: "text", content: "진짜?" },
+  { id: "text5", type: "text", content: "어이?" },
+  { id: "text6", type: "text", content: "띠용" },
 ];
 
 // 이모티콘 목록 렌더링 (전역 이모지 리스트용 - 기존 호환)
@@ -727,6 +739,16 @@ function renderEmojiList() {
       img.src = emoji.content;
       img.alt = emoji.id;
       btn.appendChild(img);
+    } else if (emoji.type === "text") {
+      // 글씨 이모티콘 스타일링
+      btn.textContent = emoji.content;
+      btn.style.fontSize = "12px";
+      btn.style.fontWeight = "bold";
+      btn.style.color = "#1e293b";
+      btn.style.backgroundColor = "rgba(255, 200, 100, 0.6)";
+      btn.style.border = "2px solid #ff9800";
+      btn.style.borderRadius = "8px";
+      btn.style.padding = "4px 8px";
     } else {
       btn.textContent = emoji.content;
     }
@@ -754,6 +776,16 @@ function renderSidebarEmojiPicker(container) {
       img.src = emoji.content;
       img.alt = emoji.id;
       btn.appendChild(img);
+    } else if (emoji.type === "text") {
+      // 글씨 이모티콘 스타일링
+      btn.textContent = emoji.content;
+      btn.style.fontSize = "11px";
+      btn.style.fontWeight = "bold";
+      btn.style.color = "#1e293b";
+      btn.style.backgroundColor = "rgba(255, 200, 100, 0.6)";
+      btn.style.border = "1px solid #ff9800";
+      btn.style.borderRadius = "6px";
+      btn.style.padding = "3px 6px";
     } else {
       btn.textContent = emoji.content;
     }
@@ -784,6 +816,7 @@ function toggleEmojiPicker(show) {
 
 // 이모티콘 전송
 function sendEmoji(emojiId) {
+  playSound('click');
   socket.emit("emoji:send", { emojiId });
 }
 
@@ -815,13 +848,24 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     const emojiEl = document.createElement("div");
     emojiEl.className = "player-emoji-floating";
     emojiEl.style.position = "absolute";
-    emojiEl.style.fontSize = "32px";
     emojiEl.style.zIndex = "100";
     emojiEl.style.pointerEvents = "none";
 
     if (emoji.type === "image") {
+      emojiEl.style.fontSize = "32px";
       emojiEl.innerHTML = `<img src="${emoji.content}" alt="${emojiId}" style="width: 40px; height: 40px;">`;
+    } else if (emoji.type === "text") {
+      // 글씨 이모티콘 스타일
+      emojiEl.style.fontSize = "14px";
+      emojiEl.style.fontWeight = "bold";
+      emojiEl.style.color = "#1e293b";
+      emojiEl.style.backgroundColor = "rgba(255, 200, 100, 0.7)";
+      emojiEl.style.padding = "4px 8px";
+      emojiEl.style.borderRadius = "8px";
+      emojiEl.style.border = "2px solid #ff9800";
+      emojiEl.textContent = emoji.content;
     } else {
+      emojiEl.style.fontSize = "32px";
       emojiEl.textContent = emoji.content;
     }
 
@@ -921,6 +965,7 @@ const RESULT_EMOJI_CONFIG = {
 
 // 결과 화면 이모티콘 전송
 function sendResultEmoji(emojiType) {
+  playSound('click');
   socket.emit("result:emoji", { emojiType });
 }
 
@@ -1666,6 +1711,9 @@ socket.on("disconnect", () => {
 
 // 방 상태 업데이트
 socket.on("game:countdown", ({ secondsLeft }) => {
+  if (secondsLeft === 3) {
+    playSound('countdown');
+  }
   if (countdownNumber) countdownNumber.textContent = String(secondsLeft);
   showScreen(screenCountdown);
 });
@@ -1697,6 +1745,9 @@ socket.on("story:round", (payload) => {
   if (currentRoomState && currentRoomState.players) {
     updateSidebarPlayerStatus(currentRoomState.players, {});
   }
+
+  // 라운드 시작 사운드
+  playSound('nextTurn');
 
   currentRoundPayload = payload;
   const currentRound = payload.round ?? 0;
@@ -1775,6 +1826,21 @@ socket.on("prompt:timer", ({ secondsLeft }) => {
 socket.on("story:timer", ({ secondsLeft }) => {
   if (displayTimer) {
     displayTimer.textContent = `${secondsLeft}s`;
+  }
+
+  // 마지막 5초 동안 매초 카운팅 사운드
+  if (secondsLeft > 0 && secondsLeft <= 5) {
+    playSound('beforeTimeout');
+  }
+
+  if (secondsLeft <= 0) {
+    if (inputStoryText && !inputStoryText.disabled && btnSubmitStory && !btnSubmitStory.disabled) {
+      const currentText = String(inputStoryText.value || "");
+      // 최신 초안을 서버에 저장
+      socket.emit("story:writing", { writing: false, text: currentText });
+      // 작성한 만큼 자동 제출
+      submitStoryText(currentText, { auto: true });
+    }
   }
 });
 
@@ -1947,9 +2013,11 @@ inputStoryText?.addEventListener("input", () => {
 // 방 만들기: 닉네임 확인 후 바로 생성
 btnCreateRoom?.addEventListener("click", () => {
   if (!ensureName()) return;
+  playSound('click');
 
   socket.emit("room:create", { name: myName, avatar: myAvatar }, (res) => {
     if (!res?.ok) return alertError(`방 생성 실패: ${res?.error || "UNKNOWN"}`);
+    playSound('enter');
     if (res.state) {
       currentRoomState = res.state;
       goByPhase(res.state);
@@ -1964,6 +2032,7 @@ const btnJoinInline = document.getElementById("btn-join-inline");
 
 btnJoinRoom?.addEventListener("click", () => {
   if (!ensureName()) return;
+  playSound('click');
 
   const isOpen = !joinInline?.classList.contains("hidden");
 
@@ -1983,12 +2052,14 @@ btnJoinRoom?.addEventListener("click", () => {
 
 function joinRoomWith(roomId) {
   if (!ensureName()) return;
+  playSound('click');
 
   const rid = String(roomId || "").trim();
   if (!rid) return alertError("그 방은 없는 방이에요…");
 
   socket.emit("room:join", { roomId: rid, name: myName, avatar: myAvatar }, (res) => {
     if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    playSound('enter');
 
     // 인라인 닫기
     joinInline?.classList.add("hidden");
@@ -2060,6 +2131,7 @@ btnJoin?.addEventListener("click", () => {
 });
 
 btnLeave?.addEventListener("click", () => {
+  playSound('click');
   // TTS 중지
   cancelTTS();
 
@@ -2076,6 +2148,7 @@ btnLeave?.addEventListener("click", () => {
 
 // 게임 시작
 btnStart?.addEventListener("click", () => {
+  playSound('click');
   socket.emit("game:start", {}, (res) => {
     if (!res?.ok) return alertError(`${res?.error || "UNKNOWN"}`);
   });
@@ -2083,6 +2156,7 @@ btnStart?.addEventListener("click", () => {
 
 // 방 코드 복사 (방 코드 컨테이너 클릭 시)
 roomCodeDisplay?.addEventListener("click", async () => {
+  playSound('click');
   const roomId = currentRoomState?.roomId;
   if (!roomId) return alertError("복사할 방 코드가 없어!");
 
@@ -2108,6 +2182,7 @@ roomCodeDisplay?.addEventListener("click", async () => {
 
 // 제시어 제출
 btnSubmitPrompts?.addEventListener("click", () => {
+  playSound('click');
   const inputs = Array.from(document.querySelectorAll(".input-prompt"));
   const prompts = inputs.map((el) => {
     const v = String(el.value || "").trim();
@@ -2135,31 +2210,46 @@ btnSubmitPrompts?.addEventListener("click", () => {
   });
 });
 
-btnSubmitStory?.addEventListener("click", () => {
-  const text = String(inputStoryText?.value || "").trim();
-  if (!text) return alertError("문장을 입력해줘!");
+function submitStoryText(text, { auto = false } = {}) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) {
+    if (!auto) alertError("문장을 입력해줘!");
+    return;
+  }
 
-  btnSubmitStory.disabled = true;
+  const round = typeof currentRoundPayload?.round === "number" ? currentRoundPayload.round : null;
+
+  if (btnSubmitStory) btnSubmitStory.disabled = true;
   if (storyWaitMsg) storyWaitMsg.classList.remove("hidden");
 
-  socket.emit("story:submit", { text }, (res) => {
+  socket.emit("story:submit", { text: trimmed, round }, (res) => {
     if (!res?.ok) {
-      btnSubmitStory.disabled = false;
       if (storyWaitMsg) storyWaitMsg.classList.add("hidden");
-      return alertError(`제출 실패: ${res?.error || "UNKNOWN"}`);
+      if (auto) return;
+      if (btnSubmitStory) btnSubmitStory.disabled = false;
+      alertError(`제출 실패: ${res?.error || "UNKNOWN"}`);
+      return;
     }
 
-  // 성공 즉시 잠금
-  if (inputStoryText) inputStoryText.disabled = true;
+    // 성공 즉시 잠금
+    if (inputStoryText) inputStoryText.disabled = true;
   });
+}
+
+btnSubmitStory?.addEventListener("click", () => {
+  playSound('click');
+  const text = String(inputStoryText?.value || "");
+  submitStoryText(text);
 });
 
 // 결과 화면 버튼 핸들러
 btnNextStory?.addEventListener("click", () => {
+  playSound('click');
   goNextStory();
 });
 
 btnPrev?.addEventListener("click", () => {
+  playSound('click');
   goPrevStory();
 });
 
@@ -2179,6 +2269,7 @@ document.addEventListener("keydown", (e) => {
 
 // 다시하기 버튼 (방장만)
 btnRestart?.addEventListener("click", () => {
+  playSound('click');
   if (!isResultHost()) return;
 
   socket.emit("game:restart", {}, (res) => {
@@ -2188,10 +2279,11 @@ btnRestart?.addEventListener("click", () => {
 
 // 게임 나가기 (첫 화면으로 이동)
 btnExit?.addEventListener("click", () => {
+  playSound('click');
   cancelTTS();
 
   socket.emit("room:leave", {}, (res) => {
-    if (!res?.ok) return alertError(`나가기 실패: ${res?.error || "UNKNOWN"}`);
+    if (!res?.ok) return alertError(`나가기 실패: ${res?.error || "UNKNOWN"}`)
 
     if (displayRoomCode) displayRoomCode.textContent = "#----";
     if (playerList) playerList.innerHTML = "";
@@ -2206,33 +2298,7 @@ btnExit?.addEventListener("click", () => {
   });
 });
 
-// 모든 계산된 스타일을 인라인으로 복사하는 헬퍼 함수
-function cloneWithStyles(element) {
-  const clone = element.cloneNode(false);
-  const computedStyle = window.getComputedStyle(element);
-
-  // 모든 스타일 속성을 인라인으로 복사
-  for (let i = 0; i < computedStyle.length; i++) {
-    const prop = computedStyle[i];
-    clone.style[prop] = computedStyle.getPropertyValue(prop);
-  }
-
-  // 자식 요소들도 재귀적으로 복사
-  for (const child of element.children) {
-    clone.appendChild(cloneWithStyles(child));
-  }
-
-  // 텍스트 노드 복사
-  for (const node of element.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      clone.appendChild(node.cloneNode(false));
-    }
-  }
-
-  return clone;
-}
-
-// 스크린샷 저장 (SVG foreignObject + Canvas 방식)
+// 스크린샷 저장 (html2canvas 라이브러리 사용)
 async function captureAndDownloadScreenshot() {
   const captureContainer = document.querySelector(".results-container");
   if (!captureContainer) {
@@ -2240,136 +2306,61 @@ async function captureAndDownloadScreenshot() {
     return;
   }
 
-  const controlsDiv = document.querySelector(".results-controls");
-  const restartBtn = document.getElementById("btn-restart");
+  if (!window.html2canvas) {
+    alertError("스크린샷 라이브러리를 로드하지 못했습니다. 다시 시도해주세요.");
+    return;
+  }
 
   try {
-    // 캡처에 불필요한 UI 숨기기
-    if (controlsDiv) controlsDiv.style.visibility = "hidden";
-    if (restartBtn) restartBtn.style.visibility = "hidden";
+    // 캡처 옵션
+    const canvas = await html2canvas(captureContainer, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#1e293b",
+      allowTaint: true,
+    });
 
-    // 폰트가 로드되기를 기다립니다.
-    if (document.fonts && document.fonts.ready) {
-      await document.fonts.ready;
-    }
-
-    // 컨테이너의 크기 가져오기
-    const rect = captureContainer.getBoundingClientRect();
-    const width = Math.ceil(rect.width);
-    const height = Math.ceil(rect.height);
-
-    // 모든 스타일이 인라인으로 복사된 클론 생성
-    const clone = cloneWithStyles(captureContainer);
-
-    // CSS 텍스트 수집
-    let cssText = "";
-    for (const sheet of document.styleSheets) {
-      try {
-        for (const rule of sheet.cssRules || []) {
-          cssText += rule.cssText + "\n";
-        }
-      } catch (e) {
-        // CORS 제약으로 접근할 수 없는 스타일시트는 무시
-        console.warn("Cannot access stylesheet:", e);
+    // Canvas를 Blob으로 변환
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        alertError("이미지 생성에 실패했습니다.");
+        return;
       }
-    }
 
-    // SVG 생성 (스타일 포함)
-    const serializer = new XMLSerializer();
-    const cloneHTML = serializer.serializeToString(clone);
+      // 다운로드 링크 생성
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      const storyName = storyTitle?.textContent || "story";
+      const cleanName = storyName.replace(/\s+/g, "_");
+      const fileName = `story_${cleanName}_${Date.now()}.png`;
+      link.download = fileName;
+      
+      // 다운로드 시작
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-    const svgData = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-        <defs>
-          <style type="text/css">
-            <![CDATA[
-              ${cssText}
-            ]]>
-          </style>
-        </defs>
-        <foreignObject x="0" y="0" width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="width: ${width}px; height: ${height}px; overflow: hidden;">
-            ${cloneHTML}
-          </div>
-        </foreignObject>
-      </svg>
-    `;
+      // URL 정리
+      URL.revokeObjectURL(link.href);
 
-    // Canvas에 렌더링
-    const canvas = document.createElement("canvas");
-    const scale = window.devicePixelRatio || 2;
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-
-    const ctx = canvas.getContext("2d");
-    ctx.scale(scale, scale);
-    ctx.fillStyle = "#1e293b";
-    ctx.fillRect(0, 0, width, height);
-
-    // SVG를 이미지로 변환
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-
-    img.onload = function() {
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // 이미지 다운로드
-      canvas.toBlob(function(blob) {
-        if (!blob) {
-          alertError("이미지 생성에 실패했습니다.");
-          return;
-        }
-
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        const fileName = `story_${(storyTitle?.textContent || "story").replace(/\s+/g, "_")}_${Date.now()}.png`;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // 정리
-        URL.revokeObjectURL(url);
-        URL.revokeObjectURL(link.href);
-
-        alert("이미지가 성공적으로 저장되었습니다!");
-
-        // UI 복원
-        if (controlsDiv) controlsDiv.style.visibility = "visible";
-        if (restartBtn) restartBtn.style.visibility = "visible";
-      }, "image/png");
-    };
-
-    img.onerror = function(error) {
-      console.error("이미지 로드 중 오류 발생:", error);
-      URL.revokeObjectURL(url);
-      alertError("이미지 저장에 실패했습니다. 다시 시도해 주세요.");
-
-      // UI 복원
-      if (controlsDiv) controlsDiv.style.visibility = "visible";
-      if (restartBtn) restartBtn.style.visibility = "visible";
-    };
-
-    img.src = url;
+      alert("이미지가 성공적으로 저장되었습니다!");
+    }, "image/png");
 
   } catch (error) {
     console.error("스크린샷 캡처 중 오류 발생:", error);
     alertError("이미지 저장에 실패했습니다. 다시 시도해 주세요.");
-
-    // UI 복원
-    if (controlsDiv) controlsDiv.style.visibility = "visible";
-    if (restartBtn) restartBtn.style.visibility = "visible";
   }
 }
 
 btnScreenshot?.addEventListener("click", () => {
+  playSound('click');
   captureAndDownloadScreenshot();
 });
 
 // ---- 이모티콘 버튼 이벤트 ----
 btnEmojiToggle?.addEventListener("click", () => {
+  playSound('click');
   toggleEmojiPicker();
 });
 
@@ -2391,8 +2382,10 @@ btnResultClap?.addEventListener("click", () => {
 });
 
 // ---- BGM 초기화 ----
-let bgmMuted = false;
+// 마스터 음량 상태
+let masterMuted = false;
 let bgmVolume = 0.3;
+let sfxVolume = 0.5;
 
 if (bgm) {
   bgm.volume = bgmVolume;
@@ -2426,6 +2419,7 @@ function closeMenu() {
 
 // 메뉴 열기/닫기
 menuToggle?.addEventListener("click", (e) => {
+  playSound('click');
   e.stopPropagation();
   openMenu();
 });
@@ -2442,10 +2436,11 @@ document.addEventListener("keydown", (e) => {
 
 // BGM 볼륨 슬라이더
 bgmVolumeSlider?.addEventListener("input", (e) => {
+  playSound('click');
   const value = parseInt(e.target.value);
   bgmVolume = value / 100;
 
-  if (bgm && !bgmMuted) {
+  if (bgm && !masterMuted) {
     bgm.volume = bgmVolume;
   }
 
@@ -2454,33 +2449,53 @@ bgmVolumeSlider?.addEventListener("input", (e) => {
   }
 });
 
-// BGM 뮤트 토글
-function updateMuteButton() {
-  if (!bgmMuteToggle) return;
+// 효과음 볼륨 슬라이더
+sfxVolumeSlider?.addEventListener("input", (e) => {
+  playSound('click');
+  const value = parseInt(e.target.value);
+  sfxVolume = value / 100;
 
-  if (bgmMuted) {
-    bgmMuteToggle.textContent = "OFF";
-    bgmMuteToggle.classList.remove("on");
-    bgmMuteToggle.classList.add("off");
-  } else {
-    bgmMuteToggle.textContent = "ON";
-    bgmMuteToggle.classList.remove("off");
-    bgmMuteToggle.classList.add("on");
+  if (sfxVolumeValue) {
+    sfxVolumeValue.textContent = `${value}%`;
+  }
+});
+
+// 마스터 음량 갱신 (BGM 및 향후 효과음 제어)
+function updateAudioVolumes() {
+  if (bgm) {
+    if (masterMuted) {
+      bgm.volume = 0;
+    } else {
+      bgm.volume = bgmVolume;
+    }
   }
 }
 
-bgmMuteToggle?.addEventListener("click", () => {
-  bgmMuted = !bgmMuted;
+// 마스터 뮤트 토글 상태 갱신
+function updateMasterMuteButton() {
+  if (!masterMuteToggle) return;
 
-  if (bgm) {
-    bgm.volume = bgmMuted ? 0 : bgmVolume;
+  if (masterMuted) {
+    masterMuteToggle.textContent = "OFF";
+    masterMuteToggle.classList.remove("on");
+    masterMuteToggle.classList.add("off");
+  } else {
+    masterMuteToggle.textContent = "ON";
+    masterMuteToggle.classList.remove("off");
+    masterMuteToggle.classList.add("on");
   }
+}
 
-  updateMuteButton();
+// 마스터 뮤트 토글 클릭
+masterMuteToggle?.addEventListener("click", () => {
+  playSound('click');
+  masterMuted = !masterMuted;
+  updateAudioVolumes();
+  updateMasterMuteButton();
 });
 
 // 초기 뮤트 버튼 상태 설정
-updateMuteButton();
+updateMasterMuteButton();
 
 // ---- 초기화 ----
 renderEmojiList();
