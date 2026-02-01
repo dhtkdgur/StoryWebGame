@@ -18,6 +18,12 @@
       <button id="menu-close" class="menu-close-btn">✕</button>
     </div>
     <div class="menu-content">
+      <!-- 마스터 음량 조절 -->
+      <div class="menu-item">
+        <label class="menu-label">🔊 모든 음량</label>
+        <button id="master-mute-toggle" class="mute-toggle-btn">ON</button>
+      </div>
+
       <!-- BGM 볼륨 설정 -->
       <div class="menu-item">
         <label for="bgm-volume">
@@ -26,10 +32,14 @@
         </label>
         <input type="range" id="bgm-volume" class="volume-slider" min="0" max="100" value="30">
       </div>
-      <!-- BGM 뮤트 토글 -->
+
+      <!-- 효과음 볼륨 설정 -->
       <div class="menu-item">
-        <label class="menu-label">🔊 BGM</label>
-        <button id="bgm-mute-toggle" class="mute-toggle-btn">ON</button>
+        <label for="sfx-volume">
+          <span class="menu-label">🔔 효과음 볼륨</span>
+          <span id="sfx-volume-value" class="volume-value">50%</span>
+        </label>
+        <input type="range" id="sfx-volume" class="volume-slider" min="0" max="100" value="50">
       </div>
     </div>
   </div>
@@ -354,12 +364,37 @@
 </section>
 
 
-  <!-- BGM -->
+  <!-- BGM 및 효과음 -->
   <audio id="bgm" loop>
     <source src="/image/00_전체/background_v2.mp3" type="audio/mpeg">
   </audio>
 
+  <!-- 효과음 -->
+  <audio id="sfx-click">
+    <source src="/image/Sound/click_02.wav" type="audio/wav">
+  </audio>
+  <audio id="sfx-enter">
+    <source src="/image/Sound/enter.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="sfx-error">
+    <source src="/image/Sound/error_02.wav" type="audio/wav">
+  </audio>
+  <audio id="sfx-countdown">
+    <source src="/image/Sound/countdown.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="sfx-next-turn">
+    <source src="/image/Sound/next_turn.wav" type="audio/wav">
+  </audio>
+  <audio id="sfx-time-up">
+    <source src="/image/Sound/time_up_02.wav" type="audio/wav">
+  </audio>
+  <audio id="sfx-before-timeout">
+    <source src="/image/Sound/before_time_out_5s.mp3" type="audio/mpeg">
+  </audio>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="sound-config.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
