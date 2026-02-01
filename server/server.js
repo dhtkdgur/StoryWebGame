@@ -856,7 +856,15 @@ function ensureKeywordUsage(text, cards, round) {
   let usedKeywords = getUsedKeywordsFromCards(finalText, arr);
 
   if (round > 0 && arr.length > 0) {
-    const hasExactKeyword = arr.some((card) => card?.text && finalText.includes(card.text));
+    // Normalize finalText for presence check (consistent with getUsedKeywordsFromCards)
+    const normalizedFinal = normalizeNoSpace(finalText);
+    
+    const hasExactKeyword = arr.some((card) => {
+      if (!card?.text) return false;
+      const normalizedCard = normalizeNoSpace(card.text);
+      return normalizedFinal.includes(normalizedCard);
+    });
+    
     if (!hasExactKeyword) {
       const randomCard = arr[Math.floor(Math.random() * arr.length)];
       if (randomCard?.text) {
@@ -864,6 +872,7 @@ function ensureKeywordUsage(text, cards, round) {
       }
     }
 
+    // Recalculate used keywords with the updated finalText
     usedKeywords = getUsedKeywordsFromCards(finalText, arr);
   }
 

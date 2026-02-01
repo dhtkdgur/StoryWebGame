@@ -1830,7 +1830,7 @@ socket.on("story:timer", ({ secondsLeft }) => {
 
   // 마지막 5초 동안 매초 카운팅 사운드
   if (secondsLeft > 0 && secondsLeft <= 5) {
-    playSound('beforeTimeout');
+    playSound('timeUp');
   }
 
   if (secondsLeft <= 0) {
