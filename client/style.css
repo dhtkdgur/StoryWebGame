@@ -629,9 +629,12 @@ button:disabled {
 }
 
 .lobby-left h2 {
-  font-size: 1.4rem;
+  font-size: 1.8rem;
   color: #333;
   margin-bottom: 20px;
+  margin-top: 40px;
+  margin-left: 40px;
+  font-family: 'NostalgicMongtori', cursive;
   font-weight: bold;
 }
 
