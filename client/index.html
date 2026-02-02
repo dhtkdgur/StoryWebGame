@@ -57,17 +57,22 @@
           <div class="entry-left">
             <div class="avatar-preview-container">
               <p class="subtitle">선택한 아바타</p>
-            <div class="character-selection-card">
-              <p class="card-title">아바타 선택</p>
-              <div id="avatar-preview" class="avatar-preview-large" style="cursor: pointer; transition: transform 0.2s;" title="클릭하여 랜덤 캐릭터 선택"></div>
-              <p class="character-hint">클릭하면 랜덤 캐릭터</p>
-              <div class="character-confirm-wrapper">
-                <input id="input-nickname" class="nickname-input-button" placeholder="닉네임을 입력하세요" maxlength="10">
-                <button id="btn-confirm-character" class="btn-confirm-character">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
+              <div class="avatar-wrapper">
+                <div id="avatar-preview" class="avatar-preview"></div>
+                <button id="btn-random-avatar" class="random-btn">
+                  <img src="/image/char/Char_all/ChooseChar_Alien.png" alt="랜덤 변경" style="width: 40px; height: 40px;">
                 </button>
+              </div>
+            </div>
+            <div class="avatar-selection">
+              <p class="subtitle">아바타 선택</p>
+              <div id="avatar-list" class="avatar-list"></div>
+            </div>
+            <div class="nickname-section">
+              <p class="subtitle">닉네임</p>
+              <div class="nickname-label-wrapper">
+                <img src="/image/01_메인화면/작은견출지.png" alt="견출지" class="nickname-label-bg">
+                <input id="input-nickname" placeholder="닉네임 입력" maxlength="10">
               </div>
             </div>
           </div>
@@ -135,6 +140,8 @@
             <span id="player-max">12</span>
             )
           </h2>
+          
+          <img src="./image/02_로비/참가자목록 구분선.png" class="divider-img" style="margin-bottom: 15px;">
           
           <div id="player-list" class="player-list-vertical">
             
