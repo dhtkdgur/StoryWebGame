@@ -1999,6 +1999,22 @@ inputStoryText?.addEventListener("input", () => {
       socket.emit("story:writing", { writing: false, text: inputStoryText.value });
     }
   }, 1000);
+
+  // Enter로 제출
+  inputStoryText?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (e.shiftKey) return; // Shift+Enter는 줄바꿈 유지
+
+    const r = currentRoundPayload?.round;
+    if (typeof r !== "number") return;
+
+    e.preventDefault();
+
+    if (!inputStoryText.disabled && btnSubmitStory && !btnSubmitStory.disabled) {
+      submitStoryText(inputStoryText.value);
+    }
+  });
+
 });
 
 
