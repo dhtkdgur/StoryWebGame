@@ -641,31 +641,6 @@ function getCharacterById(characterId) {
 }
 
 // 랜덤 캐릭터 선택 버튼 렌더링
-function renderRandomCharacterButton() {
-  // 아바타 미리보기에 클릭 이벤트 추가
-  const avatarPreview = document.getElementById("avatar-preview");
-  if (avatarPreview) {
-    avatarPreview.addEventListener("click", () => {
-      playSound('click');
-      selectRandomCharacter();
-    });
-  }
-
-  // 확인 버튼 이벤트
-  const btnConfirm = document.getElementById("btn-confirm-character");
-  if (btnConfirm) {
-    btnConfirm.addEventListener("click", () => {
-      if (!myAvatar) {
-        alertError("캐릭터를 선택해주세요!");
-        return;
-      }
-      // 확인 버튼 클릭 시 다음 단계로 진행
-      // (현재는 닉네임 입력으로 진행)
-      playSound('click');
-    });
-  }
-}
-
 // 랜덤 캐릭터 선택
 function selectRandomCharacter() {
   const randomIndex = Math.floor(Math.random() * CHARACTER_LIST.length);
@@ -677,12 +652,11 @@ function selectRandomCharacter() {
 function selectCharacter(characterId) {
   myAvatar = characterId;
 
-  // 미리보기 업데이트 (큰 카드 형태)
-  const avatarPreview = document.getElementById("avatar-preview");
+  // 미리보기 업데이트
   if (avatarPreview) {
     const character = getCharacterById(characterId);
     if (character) {
-      avatarPreview.innerHTML = `<img src="${character.chooseImage}" alt="${character.name}">`;
+      avatarPreview.innerHTML = `<img src="${character.chooseImage}" alt="${character.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
     }
   }
 }
@@ -693,7 +667,19 @@ function renderAvatarList() {
   if (avatarList) {
     avatarList.style.display = "none";
   }
-  renderRandomCharacterButton();
+  setupRandomAvatarButton();
+}
+
+// 랜덤 아바타 버튼 설정
+function setupRandomAvatarButton() {
+  const btnRandomAvatar = document.getElementById("btn-random-avatar");
+  
+  if (btnRandomAvatar) {
+    btnRandomAvatar.addEventListener("click", () => {
+      playSound('click');
+      selectRandomCharacter();
+    });
+  }
 }
 
 // ---- 이모티콘 관련 ----
@@ -2677,8 +2663,8 @@ updateMasterMuteButton();
 renderEmojiList();
 renderAvatarList();
 
-// 첫 캐릭터 자동 선택
-if (CHARACTER_LIST.length > 0 && !myAvatar) {
+// 첫 번째 캐릭터를 기본으로 선택
+if (CHARACTER_LIST.length > 0) {
   selectCharacter(CHARACTER_LIST[0].id);
 }
 
