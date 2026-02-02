@@ -616,8 +616,8 @@ function updateSidebarPlayerStatus(players, writingStatus) {
 // ---- 새로운 캐릭터 시스템 ----
 const CHARACTER_LIST = [
   { id: "alien", name: "Alien", chooseImage: "./image/char/Char_all/ChooseChar_Alien.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Alien.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Alien.png" },
-  { id: "bear", name: "Bear", chooseImage: "./image/char/Char_all/ChooseChar_Bear.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
-  { id: "bear-1", name: "Bear-1", chooseImage: "./image/char/Char_all/ChooseChar_Bear-1.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
+  { id: "bear", name: "Raccoon", chooseImage: "./image/char/Char_all/ChooseChar_Raccoon.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Raccoon.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Raccoon.png" },
+  { id: "bear-1", name: "Tiger", chooseImage: "./image/char/Char_all/ChooseChar_Tiger.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Tiger.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Tiger.png" },
   { id: "crocodile", name: "Crocodile", chooseImage: "./image/char/Char_all/ChooseChar_Crocodile.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Crocodile.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Crocodile.png" },
   { id: "eagle", name: "Eagle", chooseImage: "./image/char/Char_all/ChooseChar_Eagle.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Eagle.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Eagle.png" },
   { id: "giraffe", name: "Giraffe", chooseImage: "./image/char/Char_all/ChooseChar_Giraffe.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Giraffe.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Giraffe.png" },
