@@ -1740,16 +1740,11 @@ button:disabled {
 -------------------- */
 .avatar-selection {
   margin-bottom: 15px;
+  display: none; /* 랜덤 선택 시스템으로 변경 */
 }
 
 .avatar-list {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 10px;
-  width: 201px;
-  height: 185px;
-  aspect-ratio: 279.25/256.69;
+  display: none; /* 사용하지 않음 */
 }
 
 .avatar-item {

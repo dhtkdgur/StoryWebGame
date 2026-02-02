@@ -269,20 +269,15 @@ function renderPlayers(players, hostId) {
     const isHost = p.id === hostId;
     const promptDone = p.submitted?.prompts ? " (제시어 완료)" : "";
 
-    // 아바타 표시
+    // 아바타 표시 (대기실용 - WaitingRoom 이미지)
     const avatarImg = document.createElement("img");
     avatarImg.className = "player-avatar-img";
-    const avatar = getAvatarById(p.avatar);
-    if (avatar) {
-      if (avatar.type === "image") {
-        avatarImg.src = avatar.content;
-        avatarImg.alt = avatar.id;
-      } else {
-        // 이모지인 경우 fallback
-        avatarImg.textContent = avatar.content;
-      }
+    const character = getCharacterById(p.avatar);
+    if (character) {
+      avatarImg.src = character.waitingRoomImage;
+      avatarImg.alt = character.name;
     } else {
-      avatarImg.textContent = "?";
+      avatarImg.src = "";
     }
     playerInfo.appendChild(avatarImg);
 
@@ -482,13 +477,10 @@ function createSidebarPlayer(player, writingStatus, isLeftSide, screenType = "st
   // 아바타
   const avatarDiv = document.createElement("div");
   avatarDiv.className = "player-avatar";
-  const avatarData = getAvatarById(player.avatar);
-  if (avatarData) {
-    if (avatarData.type === "image") {
-      avatarDiv.innerHTML = `<img src="${avatarData.content}" alt="${player.name}">`;
-    } else {
-      avatarDiv.textContent = avatarData.content;
-    }
+  const characterData = getCharacterById(player.avatar);
+  if (characterData) {
+    // 게임 중용 - InGame 이미지 사용
+    avatarDiv.innerHTML = `<img src="${characterData.inGameImage}" alt="${characterData.name}">`;
   } else {
     avatarDiv.textContent = "👤";
   }
@@ -621,79 +613,103 @@ function updateSidebarPlayerStatus(players, writingStatus) {
 // ---- 아바타 관련 ----
 // 아바타 목록 - 12개의 동물 캐릭터
 // type: "image" = 커스텀 이미지 (경로)
-const AVATAR_LIST = [
-  { id: "bear", type: "image", content: "/image/01_메인화면/Char_Bear.png", name: "곰" },
-  { id: "cat", type: "image", content: "/image/01_메인화면/Char_Cat.png", name: "고양이" },
-  { id: "dog", type: "image", content: "/image/01_메인화면/Char_Dog.png", name: "강아지" },
-  { id: "dragon", type: "image", content: "/image/01_메인화면/Char_Dragon.png", name: "용" },
-  { id: "fox", type: "image", content: "/image/01_메인화면/Char_Fox.png", name: "여우" },
-  { id: "frog", type: "image", content: "/image/01_메인화면/Char_Frog.png", name: "개구리" },
-  { id: "koala", type: "image", content: "/image/01_메인화면/Char_Koala.png", name: "코알라" },
-  { id: "panda", type: "image", content: "/image/01_메인화면/Char_Panda.png", name: "판다" },
-  { id: "penguin", type: "image", content: "/image/01_메인화면/Char_Penguin.png", name: "펭귄" },
-  { id: "pig", type: "image", content: "/image/01_메인화면/Char_Pig.png", name: "돼지" },
-  { id: "rabbit", type: "image", content: "/image/01_메인화면/Char_Rabbit.png", name: "토끼" },
-  { id: "tiger", type: "image", content: "/image/01_메인화면/Char_Tiger.png", name: "호랑이" },
+// ---- 새로운 캐릭터 시스템 ----
+const CHARACTER_LIST = [
+  { id: "alien", name: "Alien", chooseImage: "./image/char/Char_all/ChooseChar_Alien.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Alien.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Alien.png" },
+  { id: "bear", name: "Bear", chooseImage: "./image/char/Char_all/ChooseChar_Bear.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
+  { id: "bear-1", name: "Bear-1", chooseImage: "./image/char/Char_all/ChooseChar_Bear-1.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
+  { id: "crocodile", name: "Crocodile", chooseImage: "./image/char/Char_all/ChooseChar_Crocodile.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Crocodile.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Crocodile.png" },
+  { id: "eagle", name: "Eagle", chooseImage: "./image/char/Char_all/ChooseChar_Eagle.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Eagle.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Eagle.png" },
+  { id: "giraffe", name: "Giraffe", chooseImage: "./image/char/Char_all/ChooseChar_Giraffe.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Giraffe.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Giraffe.png" },
+  { id: "goldfish", name: "Goldfish", chooseImage: "./image/char/Char_all/ChooseChar_Goldfish.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Goldfish.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Goldfish.png" },
+  { id: "hedgehog", name: "Hedgehog", chooseImage: "./image/char/Char_all/ChooseChar_Hedgehog.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Hedgehog.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Hedgehog.png" },
+  { id: "hippo", name: "Hippo", chooseImage: "./image/char/Char_all/ChooseChar_Hippo.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Hippo.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Hippo.png" },
+  { id: "koala", name: "Koala", chooseImage: "./image/char/Char_all/ChooseChar_Koala.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Koala.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Koala.png" },
+  { id: "monkey", name: "Monkey", chooseImage: "./image/char/Char_all/ChooseChar_Monkey.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Monkey.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Monkey.png" },
+  { id: "parrot", name: "Parrot", chooseImage: "./image/char/Char_all/ChooseChar_Parrot.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Parrot.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Parrot.png" },
+  { id: "penguin", name: "Penguin", chooseImage: "./image/char/Char_all/ChooseChar_Penguin.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Penguin.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Penguin.png" },
+  { id: "pig", name: "Pig", chooseImage: "./image/char/Char_all/ChooseChar_Pig.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Pig.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Pig.png" },
+  { id: "puppy", name: "Puppy", chooseImage: "./image/char/Char_all/ChooseChar_Puppy.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Puppy.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Puppy.png" },
+  { id: "rabbit", name: "Rabbit", chooseImage: "./image/char/Char_all/ChooseChar_Rabbit.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Rabbit.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Rabbit.png" },
+  { id: "triceratops", name: "Triceratops", chooseImage: "./image/char/Char_all/ChooseChar_Triceratops.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Triceratops.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Triceratops.png" },
+  { id: "zebra", name: "Zebra", chooseImage: "./image/char/Char_all/ChooseChar_Zebra.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Zebra.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Zebra.png" },
 ];
 
-// 아바타 목록 렌더링
-function renderAvatarList() {
-  if (!avatarList) return;
-  avatarList.innerHTML = "";
-
-  for (const avatar of AVATAR_LIST) {
-    const div = document.createElement("div");
-    div.className = "avatar-item";
-    div.dataset.avatarId = avatar.id;
-
-    if (avatar.type === "image") {
-      const img = document.createElement("img");
-      img.src = avatar.content;
-      img.alt = avatar.id;
-      div.appendChild(img);
-    } else {
-      div.textContent = avatar.content;
-    }
-
-    div.addEventListener("click", () => {
-      selectAvatar(avatar.id);
-    });
-
-    avatarList.appendChild(div);
-  }
-
-  // 기본 선택: 첫 번째 아바타
-  if (AVATAR_LIST.length > 0 && !myAvatar) {
-    selectAvatar(AVATAR_LIST[0].id);
-  }
+// 캐릭터 ID로 캐릭터 객체 찾기
+function getCharacterById(characterId) {
+  return CHARACTER_LIST.find((c) => c.id === characterId) || null;
 }
 
-// 아바타 선택
-function selectAvatar(avatarId) {
-  myAvatar = avatarId;
+// 랜덤 캐릭터 선택 버튼 렌더링
+function renderRandomCharacterButton() {
+  // nickname-section 아래에 랜덤 버튼 추가
+  const nicknameSection = document.querySelector(".nickname-section");
+  if (!nicknameSection) return;
 
-  // UI 업데이트 - 선택 표시
-  const items = avatarList?.querySelectorAll(".avatar-item");
-  items?.forEach((item) => {
-    item.classList.toggle("selected", item.dataset.avatarId === avatarId);
+  // 기존 버튼이 있으면 제거
+  const existingBtn = document.getElementById("btn-random-character");
+  if (existingBtn) existingBtn.remove();
+
+  const btn = document.createElement("button");
+  btn.id = "btn-random-character";
+  btn.className = "btn-random-character";
+  btn.textContent = "랜덤 캐릭터";
+  btn.style.cssText = `
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: #f59e0b;
+    color: #1e293b;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
+  `;
+
+  btn.addEventListener("mouseover", () => {
+    btn.style.transform = "scale(1.05)";
   });
+
+  btn.addEventListener("mouseout", () => {
+    btn.style.transform = "scale(1)";
+  });
+
+  btn.addEventListener("click", () => {
+    playSound('click');
+    selectRandomCharacter();
+  });
+
+  nicknameSection.appendChild(btn);
+}
+
+// 랜덤 캐릭터 선택
+function selectRandomCharacter() {
+  const randomIndex = Math.floor(Math.random() * CHARACTER_LIST.length);
+  const randomCharacter = CHARACTER_LIST[randomIndex];
+  selectCharacter(randomCharacter.id);
+}
+
+// 캐릭터 선택
+function selectCharacter(characterId) {
+  myAvatar = characterId;
 
   // 미리보기 업데이트
   if (avatarPreview) {
-    const avatar = getAvatarById(avatarId);
-    if (avatar) {
-      if (avatar.type === "image") {
-        avatarPreview.innerHTML = `<img src="${avatar.content}" alt="${avatar.id}">`;
-      } else {
-        avatarPreview.textContent = avatar.content;
-      }
+    const character = getCharacterById(characterId);
+    if (character) {
+      avatarPreview.innerHTML = `<img src="${character.chooseImage}" alt="${character.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
     }
   }
 }
 
-// 아바타 ID로 아바타 객체 찾기
-function getAvatarById(avatarId) {
-  return AVATAR_LIST.find((a) => a.id === avatarId) || null;
+// 아바타 선택 UI 초기화 (사용하지 않음 - 랜덤만 사용)
+function renderAvatarList() {
+  // 아바타 선택 UI 제거 - 랜덤 버튼으로만 진행
+  if (avatarList) {
+    avatarList.style.display = "none";
+  }
+  renderRandomCharacterButton();
 }
 
 // ---- 이모티콘 관련 ----
@@ -1465,17 +1481,13 @@ function showNextChatMessage(entries, index) {
 
   // 플레이어 정보 찾기
   const writer = (currentRoomState?.players || []).find(p => p.name === writerName);
-  const avatarData = writer ? getAvatarById(writer.avatar) : null;
+  const characterData = writer ? getCharacterById(writer.avatar) : null;
 
-  // 아바타 요소 생성
+  // 아바타 요소 생성 (결과 화면용 - WaitingRoom 이미지)
   const avatarDiv = document.createElement("div");
   avatarDiv.className = "chat-avatar";
-  if (avatarData) {
-    if (avatarData.type === "image") {
-      avatarDiv.innerHTML = `<img src="${avatarData.content}" alt="${writerName}">`;
-    } else {
-      avatarDiv.textContent = avatarData.content;
-    }
+  if (characterData) {
+    avatarDiv.innerHTML = `<img src="${characterData.waitingRoomImage}" alt="${writerName}">`;
   } else {
     avatarDiv.textContent = "👤";
   }
