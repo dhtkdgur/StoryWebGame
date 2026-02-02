@@ -1845,20 +1845,6 @@ button:disabled {
 .avatar-list {
   display: none;
 }
-  transform: scale(1.1);
-  border-color: #64748b;
-}
-
-.avatar-item.selected {
-  border-color: var(--accent-yellow);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
-}
-
-.avatar-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
 /* --------------------
    결과 화면 이모티콘
