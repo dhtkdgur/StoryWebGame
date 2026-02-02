@@ -7,7 +7,6 @@ const soundEffects = {
   click: document.getElementById('sfx-click'),
   enter: document.getElementById('sfx-enter'),
   error: document.getElementById('sfx-error'),
-  countdown: document.getElementById('sfx-countdown'),
   nextTurn: document.getElementById('sfx-next-turn'),
   timeUp: document.getElementById('sfx-time-up'),
   beforeTimeout: document.getElementById('sfx-before-timeout'),

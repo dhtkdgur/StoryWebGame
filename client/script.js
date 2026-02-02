@@ -1739,9 +1739,9 @@ socket.on("story:round", (payload) => {
   const notebookPanel = document.querySelector('.notebook-panel');
   if (notebookPanel) {
     if (currentRound === 0) {
-      notebookPanel.style.backgroundImage = "url('./image/Note_Asset_round_01.png')";
+      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_round_01.png')";
     } else {
-      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/공책.png')";
+      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_Normal.png')";
     }
   }
 
@@ -2227,7 +2227,7 @@ btnSubmitPrompts?.addEventListener("click", () => {
 function submitStoryText(text, { auto = false } = {}) {
   const trimmed = String(text || "").trim();
   if (!trimmed) {
-    if (!auto) alertError("문장을 입력해줘!");
+    if (!auto) alertError("문장을 작성해 주세요.");
     return;
   }
 
