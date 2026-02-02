@@ -642,45 +642,28 @@ function getCharacterById(characterId) {
 
 // 랜덤 캐릭터 선택 버튼 렌더링
 function renderRandomCharacterButton() {
-  // nickname-section 아래에 랜덤 버튼 추가
-  const nicknameSection = document.querySelector(".nickname-section");
-  if (!nicknameSection) return;
+  // 아바타 미리보기에 클릭 이벤트 추가
+  const avatarPreview = document.getElementById("avatar-preview");
+  if (avatarPreview) {
+    avatarPreview.addEventListener("click", () => {
+      playSound('click');
+      selectRandomCharacter();
+    });
+  }
 
-  // 기존 버튼이 있으면 제거
-  const existingBtn = document.getElementById("btn-random-character");
-  if (existingBtn) existingBtn.remove();
-
-  const btn = document.createElement("button");
-  btn.id = "btn-random-character";
-  btn.className = "btn-random-character";
-  btn.textContent = "랜덤 캐릭터";
-  btn.style.cssText = `
-    margin-top: 15px;
-    padding: 10px 20px;
-    background: #f59e0b;
-    color: #1e293b;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: transform 0.2s;
-  `;
-
-  btn.addEventListener("mouseover", () => {
-    btn.style.transform = "scale(1.05)";
-  });
-
-  btn.addEventListener("mouseout", () => {
-    btn.style.transform = "scale(1)";
-  });
-
-  btn.addEventListener("click", () => {
-    playSound('click');
-    selectRandomCharacter();
-  });
-
-  nicknameSection.appendChild(btn);
+  // 확인 버튼 이벤트
+  const btnConfirm = document.getElementById("btn-confirm-character");
+  if (btnConfirm) {
+    btnConfirm.addEventListener("click", () => {
+      if (!myAvatar) {
+        alertError("캐릭터를 선택해주세요!");
+        return;
+      }
+      // 확인 버튼 클릭 시 다음 단계로 진행
+      // (현재는 닉네임 입력으로 진행)
+      playSound('click');
+    });
+  }
 }
 
 // 랜덤 캐릭터 선택
@@ -694,11 +677,12 @@ function selectRandomCharacter() {
 function selectCharacter(characterId) {
   myAvatar = characterId;
 
-  // 미리보기 업데이트
+  // 미리보기 업데이트 (큰 카드 형태)
+  const avatarPreview = document.getElementById("avatar-preview");
   if (avatarPreview) {
     const character = getCharacterById(characterId);
     if (character) {
-      avatarPreview.innerHTML = `<img src="${character.chooseImage}" alt="${character.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
+      avatarPreview.innerHTML = `<img src="${character.chooseImage}" alt="${character.name}">`;
     }
   }
 }
@@ -2692,6 +2676,11 @@ updateMasterMuteButton();
 // ---- 초기화 ----
 renderEmojiList();
 renderAvatarList();
+
+// 첫 캐릭터 자동 선택
+if (CHARACTER_LIST.length > 0 && !myAvatar) {
+  selectCharacter(CHARACTER_LIST[0].id);
+}
 
 // ---- 초기 화면 ----
 showScreen(screenName);
