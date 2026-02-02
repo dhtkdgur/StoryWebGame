@@ -2352,6 +2352,64 @@ async function captureAndDownloadScreenshot() {
     const chatMessages = document.querySelectorAll('#screen-results .chat-message');
     let yOffset = 150 * scale;  // 시작 Y 위치
     
+    // 필요한 canvas height 계산을 위한 사전 계산
+    let totalHeight = 150 * scale;
+    
+    for (const message of chatMessages) {
+      const bubbleEl = message.querySelector('.chat-bubble');
+      const bubbleText = bubbleEl?.textContent || "";
+      
+      // 텍스트 줄 수 계산
+      ctx.font = `${16 * scale}px sans-serif`;
+      const maxWidth = 580 * scale;
+      const words = bubbleText.split('');
+      let line = '';
+      let numberOfLines = 1;
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          numberOfLines++;
+          line = words[i];
+        } else {
+          line = testLine;
+        }
+      }
+      
+      // 말풍선 높이 동적 계산
+      const paddingTop = 10 * scale;
+      const paddingBottom = 10 * scale;
+      const lineHeight = 20 * scale;
+      const bubbleHeight = paddingTop + paddingBottom + numberOfLines * lineHeight;
+      
+      // 메시지 하나의 총 높이 (아바타 64px + gap + 닉네임 여백 + 말풍선 + 좋아요 + 간격)
+      const messageHeight = 64 * scale + bubbleHeight + 30 * scale + 20 * scale;
+      totalHeight += messageHeight;
+    }
+    
+    // Canvas height 확장 필요시
+    if (totalHeight > canvasHeight) {
+      canvas.height = Math.ceil(totalHeight + 50 * scale);  // 하단 여백 추가
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      // 배경 다시 그리기
+      ctx.drawImage(bgImage, 0, 0, canvasWidth, canvas.height);
+      // 제목 다시 그리기
+      ctx.font = `bold ${58 * scale}px 'NostalgicMongtori', cursive, sans-serif`;
+      ctx.fillStyle = '#1e293b';
+      ctx.textAlign = 'center';
+      ctx.fillText(titleText, canvasWidth / 2, 85 * scale);
+      // 진행 상황 다시 그리기
+      ctx.font = `${36 * scale}px 'NostalgicMongtori', cursive, sans-serif`;
+      ctx.fillStyle = '#2F3569';
+      ctx.textAlign = 'left';
+      ctx.fillText(progressStr, 90 * scale, 80 * scale);
+    }
+    
+    yOffset = 150 * scale;
+    const verticalSpacing = 20 * scale;  // 메시지 간 간격
+    
     for (const message of chatMessages) {
       // 아바타 이미지
       const avatarImg = message.querySelector('.chat-avatar img');
@@ -2389,11 +2447,37 @@ async function captureAndDownloadScreenshot() {
       ctx.textAlign = 'left';
       ctx.fillText(writerName, 160 * scale, yOffset + 20 * scale);
       
+      // 메시지 텍스트 줄 수 계산
+      ctx.font = `${16 * scale}px sans-serif`;
+      const maxWidth = 580 * scale;
+      const words = bubbleText.split('');
+      let line = '';
+      let numberOfLines = 1;
+      const textLines = [];
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          textLines.push(line);
+          line = words[i];
+          numberOfLines++;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) textLines.push(line);
+      
+      // 말풍선 높이 동적 계산
+      const paddingTop = 10 * scale;
+      const paddingBottom = 10 * scale;
+      const lineHeight = 20 * scale;
+      const bubbleHeight = paddingTop + paddingBottom + numberOfLines * lineHeight;
+      
       // 말풍선 배경 그리기
       const bubbleX = 160 * scale;
       const bubbleY = yOffset + 30 * scale;
       const bubbleWidth = 600 * scale;
-      const bubbleHeight = 50 * scale;
       
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.beginPath();
@@ -2410,33 +2494,21 @@ async function captureAndDownloadScreenshot() {
       ctx.fillStyle = '#1e293b';
       ctx.textAlign = 'left';
       
-      // 텍스트 줄바꿈 처리
-      const maxWidth = 580 * scale;
-      const words = bubbleText.split('');
-      let line = '';
-      let textY = bubbleY + 30 * scale;
-      
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i];
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && i > 0) {
-          ctx.fillText(line, bubbleX + 10 * scale, textY);
-          line = words[i];
-          textY += 20 * scale;
-        } else {
-          line = testLine;
-        }
+      let textY = bubbleY + paddingTop + 16 * scale;
+      for (const textLine of textLines) {
+        ctx.fillText(textLine, bubbleX + 10 * scale, textY);
+        textY += lineHeight;
       }
-      ctx.fillText(line, bubbleX + 10 * scale, textY);
       
-      // 좋아요 버튼 그리기
-      const likeY = bubbleY + bubbleHeight + 10 * scale;
+      // 좋아요 버튼 그리기 (크기 고정)
+      const likeY = bubbleY + bubbleHeight + 5 * scale;
       ctx.font = `${14 * scale}px sans-serif`;
       ctx.fillStyle = '#ef4444';
-      ctx.fillText(`❤️ ${likeCount}`, bubbleX, likeY + 15 * scale);
+      const likeButtonText = `❤️ ${likeCount}`;
+      ctx.fillText(likeButtonText, bubbleX, likeY + 15 * scale);
       
-      // 다음 메시지 위치
-      yOffset += 120 * scale;
+      // 다음 메시지 위치 (동적 높이 + 간격)
+      yOffset += 64 * scale + bubbleHeight + 30 * scale + verticalSpacing;
     }
 
     // 7. PNG로 다운로드
