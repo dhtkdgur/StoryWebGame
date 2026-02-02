@@ -1269,7 +1269,7 @@ button:disabled {
 }
 
 .note-background {
-  background-image: url('./image/03_키워드 적기/공책.png');
+  background-image: url('./image/Note_Asset_Keyword.png') !important;
   flex-direction: column;
   justify-content: center;
   align-items: center;

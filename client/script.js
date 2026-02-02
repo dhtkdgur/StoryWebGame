@@ -1735,6 +1735,16 @@ socket.on("story:round", (payload) => {
   const currentRound = payload.round ?? 0;
   const totalRounds = payload.totalRounds ?? 0;
 
+  // 라운드에 따라 배경 이미지 설정
+  const notebookPanel = document.querySelector('.notebook-panel');
+  if (notebookPanel) {
+    if (currentRound === 0) {
+      notebookPanel.style.backgroundImage = "url('./image/Note_Asset_round_01.png')";
+    } else {
+      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/공책.png')";
+    }
+  }
+
   const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
 
   // 라운드 표기 UI
