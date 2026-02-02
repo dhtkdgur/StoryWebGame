@@ -39,6 +39,9 @@ app.get("/", (req, res) => {
 // In-memory DB (서버가 기억하는 방/플레이어 상태)
 const rooms = {};
 
+// 대기실 최대 인원
+const MAX_PLAYERS = 12;
+
 // 5자리 방 번호 생성 (중복 방지)
 function createRoomId() {
   while (true) {
@@ -937,6 +940,12 @@ io.on("connection", (socket) => {
       const room = rooms[rid];
       if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
       if (room.phase !== "lobby") return ack?.({ ok: false, error: "GAME_ALREADY_STARTED" });
+
+    // 대기실 정원 제한
+    const currentCount = Object.keys(room.players || {}).length;
+    if (currentCount >= MAX_PLAYERS) {
+      return ack?.({ ok: false, error: "ROOM_FULL" });
+    }
 
       socket.join(rid);
       room.players[socket.id] = {

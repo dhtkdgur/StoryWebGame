@@ -2047,10 +2047,16 @@ function joinRoomWith(roomId) {
   playSound('click');
 
   const rid = String(roomId || "").trim();
-  if (!rid) return alertError("그 방은 없는 방이에요…");
+  if (!rid) return alertError("그 방은 없는 방이에요…🙀");
 
   socket.emit("room:join", { roomId: rid, name: myName, avatar: myAvatar }, (res) => {
-    if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    if (!res?.ok) {
+      if (res?.error === "ROOM_FULL") {
+        return alertError("입장 가능 인원이 초과 되었습니다.");
+      }
+      return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    }
+
     playSound('enter');
 
     // 인라인 닫기
@@ -2083,7 +2089,7 @@ function joinRoomWith(roomId) {
     if (room.players.length >= 12) {
     return cb({
       ok: false,
-      error: "방 인원이 가득 찼어요",
+      error: "입장 가능 인원이 초과 되었습니다.",
     });
   }
 
