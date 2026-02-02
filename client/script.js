@@ -2695,10 +2695,11 @@ updateMasterMuteButton();
 renderEmojiList();
 renderAvatarList();
 
-// 첫 번째 캐릭터를 기본으로 선택
+// 첫 화면 진입 시 아바타 랜덤 선택
 if (CHARACTER_LIST.length > 0) {
-  selectCharacter(CHARACTER_LIST[0].id);
+  selectRandomCharacter();
 }
+
 
 // ---- 초기 화면 ----
 showScreen(screenName);
