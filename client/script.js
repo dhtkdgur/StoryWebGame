@@ -2298,58 +2298,166 @@ btnExit?.addEventListener("click", () => {
   });
 });
 
-// 스크린샷 저장 (html2canvas 라이브러리 사용)
+// 스크린샷 저장 (Canvas API 직접 사용 - 선명한 렌더링)
 async function captureAndDownloadScreenshot() {
-  const captureContainer = document.querySelector(".results-container");
-  if (!captureContainer) {
+  const storyContainer = document.querySelector(".results-container");
+  if (!storyContainer) {
     alertError("캡처할 대상을 찾을 수 없습니다.");
     return;
   }
 
-  if (!window.html2canvas) {
-    alertError("스크린샷 라이브러리를 로드하지 못했습니다. 다시 시도해주세요.");
-    return;
-  }
-
   try {
-    // 캡처 옵션
-    const canvas = await html2canvas(captureContainer, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#1e293b",
-      allowTaint: true,
+    // 1. 배경 이미지 로드
+    const bgImage = new Image();
+    bgImage.crossOrigin = "anonymous";
+    bgImage.src = './image/05_엔딩/공책.png';
+    
+    await new Promise((resolve, reject) => {
+      bgImage.onload = resolve;
+      bgImage.onerror = () => resolve();  // 에러 발생해도 계속 진행
     });
 
-    // Canvas를 Blob으로 변환
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alertError("이미지 생성에 실패했습니다.");
-        return;
-      }
-
-      // 다운로드 링크 생성
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      const storyName = storyTitle?.textContent || "story";
-      const cleanName = storyName.replace(/\s+/g, "_");
-      const fileName = `story_${cleanName}_${Date.now()}.png`;
-      link.download = fileName;
+    // 2. Canvas 생성 (고해상도)
+    const scale = 2;  // 2배 해상도
+    const canvasWidth = 900 * scale;
+    const canvasHeight = 600 * scale;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+    
+    // 고품질 렌더링 설정
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    // 3. 배경 이미지 그리기
+    ctx.drawImage(bgImage, 0, 0, canvasWidth, canvasHeight);
+    
+    // 4. 제목 그리기 (~~의 사생활)
+    const titleText = storyTitle?.textContent || "";
+    ctx.font = `bold ${58 * scale}px 'NostalgicMongtori', cursive, sans-serif`;
+    ctx.fillStyle = '#1e293b';
+    ctx.textAlign = 'center';
+    ctx.fillText(titleText, canvasWidth / 2, 85 * scale);
+    
+    // 5. 진행 상황 그리기 (1 / 2)
+    const progressStr = `${currentChainIndex + 1} / ${resultData?.chains?.length || 1}`;
+    ctx.font = `${36 * scale}px 'NostalgicMongtori', cursive, sans-serif`;
+    ctx.fillStyle = '#2F3569';
+    ctx.textAlign = 'left';
+    ctx.fillText(progressStr, 90 * scale, 80 * scale);
+    
+    // 6. 채팅 메시지들 그리기
+    const chatMessages = document.querySelectorAll('#screen-results .chat-message');
+    let yOffset = 150 * scale;  // 시작 Y 위치
+    
+    for (const message of chatMessages) {
+      // 아바타 이미지
+      const avatarImg = message.querySelector('.chat-avatar img');
+      const writerEl = message.querySelector('.chat-writer');
+      const bubbleEl = message.querySelector('.chat-bubble');
+      const likeBtn = message.querySelector('.like-btn');
       
-      // 다운로드 시작
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const writerName = writerEl?.textContent || "";
+      const writerColor = writerEl?.style.color || '#f59e0b';
+      const bubbleText = bubbleEl?.textContent || "";
+      const likeCount = likeBtn?.querySelector('.like-count')?.textContent || "0";
+      
+      // 아바타 그리기
+      if (avatarImg && avatarImg.complete) {
+        try {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(80 * scale + 32 * scale, yOffset + 32 * scale, 32 * scale, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(avatarImg, 80 * scale, yOffset, 64 * scale, 64 * scale);
+          ctx.restore();
+        } catch (e) {
+          // 아바타 로드 실패 시 기본 원 그리기
+          ctx.beginPath();
+          ctx.arc(80 * scale + 32 * scale, yOffset + 32 * scale, 32 * scale, 0, Math.PI * 2);
+          ctx.fillStyle = '#e0e0e0';
+          ctx.fill();
+        }
+      }
+      
+      // 닉네임 그리기
+      ctx.font = `bold ${16 * scale}px sans-serif`;
+      ctx.fillStyle = writerColor;
+      ctx.textAlign = 'left';
+      ctx.fillText(writerName, 160 * scale, yOffset + 20 * scale);
+      
+      // 말풍선 배경 그리기
+      const bubbleX = 160 * scale;
+      const bubbleY = yOffset + 30 * scale;
+      const bubbleWidth = 600 * scale;
+      const bubbleHeight = 50 * scale;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 10 * scale);
+      ctx.fill();
+      
+      // 말풍선 테두리
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.lineWidth = 1 * scale;
+      ctx.stroke();
+      
+      // 메시지 텍스트 그리기
+      ctx.font = `${16 * scale}px sans-serif`;
+      ctx.fillStyle = '#1e293b';
+      ctx.textAlign = 'left';
+      
+      // 텍스트 줄바꿈 처리
+      const maxWidth = 580 * scale;
+      const words = bubbleText.split('');
+      let line = '';
+      let textY = bubbleY + 30 * scale;
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          ctx.fillText(line, bubbleX + 10 * scale, textY);
+          line = words[i];
+          textY += 20 * scale;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, bubbleX + 10 * scale, textY);
+      
+      // 좋아요 버튼 그리기
+      const likeY = bubbleY + bubbleHeight + 10 * scale;
+      ctx.font = `${14 * scale}px sans-serif`;
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText(`❤️ ${likeCount}`, bubbleX, likeY + 15 * scale);
+      
+      // 다음 메시지 위치
+      yOffset += 120 * scale;
+    }
 
-      // URL 정리
-      URL.revokeObjectURL(link.href);
-
-      alert("이미지가 성공적으로 저장되었습니다!");
-    }, "image/png");
+    // 7. PNG로 다운로드
+    const imageUri = canvas.toDataURL("image/png", 1.0);
+    
+    const link = document.createElement("a");
+    link.href = imageUri;
+    
+    const date = new Date();
+    const storyName = storyTitle?.textContent || "우리들의_이야기";
+    const cleanName = storyName.replace(/\s+/g, "_");
+    const fileName = `${cleanName}_${date.getHours()}시${date.getMinutes()}분.png`;
+    link.download = fileName;
+    
+    link.click();
+    
+    alert("이미지가 성공적으로 저장되었습니다!");
 
   } catch (error) {
-    console.error("스크린샷 캡처 중 오류 발생:", error);
-    alertError("이미지 저장에 실패했습니다. 다시 시도해 주세요.");
+    console.error("캡처 실패:", error);
+    alertError("저장에 실패했습니다. 다시 시도해 주세요.");
   }
 }
 

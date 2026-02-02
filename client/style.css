@@ -983,6 +983,7 @@ button:disabled {
   background: transparent;
   box-shadow: none;
   padding: 0;
+  z-index: 10;
 }
 
 #screen-results .result-side-btn img {
