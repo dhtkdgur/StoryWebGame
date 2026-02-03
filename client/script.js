@@ -566,60 +566,6 @@ function updatePromptsSidebarStatus(players, writingStatus) {
   });
 }
 
-// 고정 이모티콘 패널 생성 (왼쪽 사이드바에 4번째 행에 고정)
-function createFixedEmojiPanel() {
-  const div = document.createElement("div");
-  div.className = "sidebar-emoji-fixed";
-  
-  const emojiContainer = document.createElement("div");
-  emojiContainer.className = "sidebar-emoji-grid";
-  
-  // 이모지와 글씨 이모지를 배열로 준비
-  const regularEmojis = EMOJI_LIST.filter(e => e.type === "emoji");
-  const textEmojis = EMOJI_LIST.filter(e => e.type === "text");
-  
-  // 이모지 버튼들 (칸 1개 할당)
-  regularEmojis.forEach(emoji => {
-    const btn = document.createElement("button");
-    btn.className = "emoji-btn emoji-regular";
-    btn.textContent = emoji.content;
-    btn.dataset.emojiId = emoji.id;
-    
-    btn.addEventListener("mouseover", () => {
-      btn.style.background = "rgba(200, 200, 200, 0.3)";
-    });
-    
-    btn.addEventListener("mouseout", () => {
-      btn.style.background = "transparent";
-    });
-    
-    btn.addEventListener("click", () => {
-      playSound('click');
-      sendEmoji(emoji.id);
-    });
-    
-    emojiContainer.appendChild(btn);
-  });
-  
-  // 글씨 이모지 버튼들 (칸 4개 할당 - 한 줄에 한 문장)
-  textEmojis.forEach(emoji => {
-    const btn = document.createElement("button");
-    btn.className = "emoji-btn emoji-text";
-    btn.textContent = emoji.content;
-    btn.dataset.emojiId = emoji.id;
-    
-    btn.addEventListener("click", () => {
-      playSound('click');
-      sendEmoji(emoji.id);
-    });
-    
-    emojiContainer.appendChild(btn);
-  });
-  
-  div.appendChild(emojiContainer);
-  return div;
-}
-
 // 사이드바 플레이어 요소 생성
 // screenType: "story" (스토리 화면) 또는 "prompts" (키워드 화면)
 function createSidebarPlayer(player, writingStatus, isLeftSide, screenType = "story") {

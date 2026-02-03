@@ -1654,60 +1654,6 @@ button:disabled {
   object-fit: cover;
 }
 
-/* 구버전 스타일 (로비 등 다른 곳에서만 사용) */
-.sidebar-player .player-name {
-  font-size: 0.85rem;
-  font-weight: bold;
-  text-align: center;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-  color: #f8fafc;
-}
-
-/* 구버전 상태 아이콘 */
-.player-status-icon-container {
-  position: absolute;
-  bottom: 5px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-/* 구버전: 좌측 배치 - 오른쪽 하단 */
-.sidebar-player.left-side .player-status-icon-container {
-  right: 5px;
-}
-
-/* 우측 배치 (3, 4열) - 왼쪽 하단에 아이콘 */
-.sidebar-player.right-side .player-status-icon-container {
-  left: 5px;
-}
-
-.player-status-icon-container .status-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.sidebar-player.writing .player-avatar {
-  border-color: #fbbf24;
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-}
-
-.sidebar-player.writing .player-status {
-  background: #fbbf24;
-  color: #000;
-  animation: pulse 1s infinite;
-}
-
 .sidebar-player.done .player-avatar {
   border-color: #34d399;
   box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
@@ -1783,15 +1729,6 @@ button:disabled {
 .sidebar-emoji-toggle:hover {
   background: #64748b;
   transform: scale(1.1);
-}
-
-.sidebar-emoji-fixed {
-  width: 100%;
-  background: var(--card-bg);
-  border-radius: 15px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border: 2px solid #cbd5e1;
-  padding: 8px;
 }
 
 .sidebar-emoji-grid {
