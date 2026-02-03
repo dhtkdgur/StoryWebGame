@@ -1813,9 +1813,9 @@ socket.on("room:state", (state) => {
   
   // 사이드바 상태 업데이트 (제출 상태 즉시 반영)
   if (state.phase === "prompt" && state.players) {
-    renderPromptsSidebars(state.players, {});
+    updatePromptsSidebarStatus(state.players, {});
   } else if (state.phase === "story" && state.players) {
-    renderPlayerSidebars(state.players, {});
+    updateSidebarPlayerStatus(state.players, {});
   }
   
   lastPhase = state.phase;
@@ -2213,14 +2213,6 @@ function joinRoomWith(roomId) {
       joinRoomWith(roomCodeInputInline?.value);
     }
   });
-
-    if (room.players.length >= 12) {
-    return cb({
-      ok: false,
-      error: "입장 가능 인원이 초과 되었습니다.",
-    });
-  }
-
 }
 
 // join-inline의 Go 버튼

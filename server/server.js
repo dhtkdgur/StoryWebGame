@@ -941,11 +941,11 @@ io.on("connection", (socket) => {
       if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
       if (room.phase !== "lobby") return ack?.({ ok: false, error: "GAME_ALREADY_STARTED" });
 
-    // 대기실 정원 제한 (연결된 플레이어만 계산)
-    const currentCount = Object.values(room.players || {}).filter(p => !p.disconnected).length;
-    if (currentCount >= MAX_PLAYERS) {
-      return ack?.({ ok: false, error: "ROOM_FULL" });
-    }
+      // 대기실 정원 제한 (연결된 플레이어만 계산)
+      const currentCount = Object.values(room.players || {}).filter(p => !p.disconnected).length;
+      if (currentCount >= MAX_PLAYERS) {
+        return ack?.({ ok: false, error: "ROOM_FULL" });
+      }
 
       socket.join(rid);
       room.players[socket.id] = {
