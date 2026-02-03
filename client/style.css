@@ -1240,13 +1240,12 @@ button:disabled {
    스토리 작성 화면 레이아웃
 -------------------- */
 .story-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 20px;
-  width: 100%;
-  max-width: 1400px;
-  align-items: center;
+  display: flex;
   justify-content: center;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  max-width: 1200px;
 }
 
 #screen-story .story-layout {

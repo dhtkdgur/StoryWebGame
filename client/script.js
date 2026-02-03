@@ -594,6 +594,7 @@ function createSidebarPlayer(player, writingStatus, isLeftSide, screenType = "st
     avatarImg.src = characterData.inGameImage;
     avatarImg.alt = characterData.name;
   } else {
+    avatarImg.src = DEFAULT_AVATAR;
     avatarImg.alt = "프로필";
   }
 
@@ -660,6 +661,9 @@ function updateSidebarPlayerStatus(players, writingStatus) {
 // 아바타 목록 - 12개의 동물 캐릭터
 // type: "image" = 커스텀 이미지 (경로)
 // ---- 새로운 캐릭터 시스템 ----
+// 기본 아바타 (캐릭터 데이터 없을 때 사용)
+const DEFAULT_AVATAR = "./image/char/Char_InGame/Char_Circle_Alien.png";
+
 const CHARACTER_LIST = [
   { id: "alien", name: "Alien", chooseImage: "./image/char/Char_all/ChooseChar_Alien.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Alien.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Alien.png" },
   { id: "bear", name: "Racoon", chooseImage: "./image/char/Char_all/ChooseChar_Racoon.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Racoon.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Racoon.png" },
