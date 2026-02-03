@@ -391,18 +391,31 @@ function arrangeProfilesByRules(players) {
   
   // 배치 규칙: 2열과 3열을 번갈아가며 채우기 (2열 -> 3열 -> 2열 -> 3열 ...)
   // 본인은 2열 1행에 고정
-  const col2Players = [me];  // 2열에는 본인부터 시작
+  const hasMe = !!me;
+  const col2Players = hasMe ? [me] : [];  // 2열에는 본인부터 시작 (본인이 있을 때만)
   const col3Players = [];    // 3열
   const col4Players = [];    // 4열 (9명부터)
   
   // 나머지 플레이어를 2열과 3열에 번갈아 배치
   others.forEach((player, index) => {
-    if (index % 2 === 0) {
-      // 짝수 인덱스(0, 2, 4...): 3열(오른쪽)에 추가
-      col3Players.push(player);
+    if (hasMe) {
+      // 본인이 있을 때: 기존 parity 유지
+      if (index % 2 === 0) {
+        // 짝수 인덱스(0, 2, 4...): 3열(오른쪽)에 추가
+        col3Players.push(player);
+      } else {
+        // 홀수 인덱스(1, 3, 5...): 2열(왼쪽)에 추가
+        col2Players.push(player);
+      }
     } else {
-      // 홀수 인덱스(1, 3, 5...): 2열(왼쪽)에 추가
-      col2Players.push(player);
+      // 본인이 없을 때: parity 반전 (첫 번째 other가 2열로)
+      if (index % 2 === 0) {
+        // 짝수 인덱스(0, 2, 4...): 2열(왼쪽)에 추가
+        col2Players.push(player);
+      } else {
+        // 홀수 인덱스(1, 3, 5...): 3열(오른쪽)에 추가
+        col3Players.push(player);
+      }
     }
   });
   
