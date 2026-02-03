@@ -765,9 +765,14 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 20px;
+  gap: 3px;
   width: 100%;
   max-width: 1200px;
+}
+
+#screen-prompts .prompts-layout {
+  position: relative;
+  overflow: visible;
 }
 
 .prompts-main {
@@ -1236,17 +1241,47 @@ button:disabled {
 -------------------- */
 .story-layout {
   display: flex;
-  align-items: flex-start;
   justify-content: center;
-  gap: 20px;
+  align-items: flex-start;
+  gap: 3px;
   width: 100%;
   max-width: 1200px;
 }
 
+#screen-story .story-layout {
+  position: relative;
+  overflow: visible;
+}
+
+/* 게임 플레이 중 사이드바를 공책 가장자리에 붙이기 */
+#screen-prompts #prompts-players-left,
+#screen-story #players-left {
+  position: absolute;
+  top: 50px;
+  right: 100%;
+  margin-right: -90px;
+  width: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+#screen-prompts #prompts-players-right,
+#screen-story #players-right {
+  position: absolute;
+  top: 50px;
+  left: 100%;
+  margin-left: -90px;
+  width: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 .story-main {
-  flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .notebook-panel,
@@ -1449,38 +1484,151 @@ button:disabled {
 .player-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  min-width: 120px;
-  padding: 10px;
+  gap: 3px;
+  min-width: 115px;
+  padding: 2px;
+  align-items: center;
+  position: relative;
 }
 
 .player-sidebar-left {
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px;
+  align-items: start;
+  justify-items: center;
 }
 
 .player-sidebar-right {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px;
+  align-items: start;
+  justify-items: center;
+}
+
+.player-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-items: center;
 }
 
 .sidebar-player {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: var(--card-bg);
-  border-radius: 15px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  gap: 5px;
+  padding: 6px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
   position: relative;
   transition: transform 0.2s, box-shadow 0.2s;
-  width: 100px;
-  min-height: 140px;
+  width: auto;
+  min-height: auto;
   box-sizing: border-box;
 }
 
 .sidebar-player:hover {
   transform: scale(1.05);
   z-index: 10;
+}
+
+/* 게임 화면용 프로필 컨테이너 */
+#screen-story .sidebar-player,
+#screen-prompts .sidebar-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 프로필 컨테이너 (아바타 + 닉네임) */
+#screen-story .profile-container,
+#screen-prompts .profile-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  font-family: sans-serif;
+}
+
+/* 아바타 감싸는 영역 */
+#screen-story .avatar-wrapper,
+#screen-prompts .avatar-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+/* 원형 프로필 이미지 */
+#screen-story .avatar-img,
+#screen-prompts .avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: none;
+}
+
+/* 상태 배지: 우측 또는 좌측 하단 겹치기 */
+#screen-story .status-badge,
+#screen-prompts .status-badge {
+  position: absolute;
+  bottom: 5px;
+  width: 28px;
+  height: 28px;
+  background-color: transparent;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+}
+
+/* 좌측 배치 - 우측 하단 */
+#screen-story .sidebar-player.left-side .status-badge,
+#screen-prompts .sidebar-player.left-side .status-badge {
+  right: 0px;
+}
+
+/* 우측 배치 - 좌측 하단 */
+#screen-story .sidebar-player.right-side .status-badge,
+#screen-prompts .sidebar-player.right-side .status-badge {
+  left: 0px;
+}
+
+/* 배지 내 상태 이미지 */
+#screen-story .badge-status-icon,
+#screen-prompts .badge-status-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+#screen-story .dots,
+#screen-prompts .dots {
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: -4px;
+}
+
+/* 닉네임 태그: 알약 모양 */
+#screen-story .nickname-tag,
+#screen-prompts .nickname-tag {
+  background-color: #1a1b3a;
+  color: white;
+  padding: 4px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  margin-top: -16px;
+  transform: translateY(-2px);
+  line-height: 1.1;
 }
 
 .sidebar-player .player-avatar {
@@ -1496,43 +1644,13 @@ button:disabled {
   overflow: hidden;
   transition: border-color 0.3s;
   flex-shrink: 0;
+  position: relative;
 }
 
 .sidebar-player .player-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.sidebar-player .player-name {
-  font-size: 0.85rem;
-  font-weight: bold;
-  text-align: center;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-  color: #f8fafc;
-}
-
-.sidebar-player .player-status {
-  font-size: 0.75rem;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: #475569;
-  white-space: nowrap;
-}
-
-.sidebar-player.writing .player-avatar {
-  border-color: #fbbf24;
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-}
-
-.sidebar-player.writing .player-status {
-  background: #fbbf24;
-  color: #000;
-  animation: pulse 1s infinite;
 }
 
 .sidebar-player.done .player-avatar {
@@ -1612,6 +1730,97 @@ button:disabled {
   transform: scale(1.1);
 }
 
+.sidebar-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.emoji-btn {
+  padding: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.emoji-btn.emoji-regular {
+  font-size: 20px;
+}
+
+.emoji-btn.emoji-text {
+  font-size: 11px;
+  font-weight: bold;
+  color: #1e293b;
+  background-color: rgba(255, 200, 100, 0.6);
+  border: 1px solid #ff9800;
+  padding: 6px 8px;
+  grid-column: span 2;
+}
+
+.emoji-btn:hover {
+  background: rgba(200, 200, 200, 0.3);
+  transform: scale(1.15);
+}
+
+.emoji-btn.emoji-text:hover {
+  background-color: rgba(255, 180, 80, 0.8);
+  transform: none;
+}
+
+.emoji-btn:active {
+  transform: scale(0.95);
+}
+
+.sidebar-emoji-picker-always {
+  position: absolute;
+  bottom: auto;
+  top: 10px;
+  left: -120px;
+  width: auto;
+  min-width: 90px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  border: 2px solid #cbd5e1;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  z-index: 50;
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn {
+  padding: 8px;
+  font-size: 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn:hover {
+  background: rgba(200, 200, 200, 0.3);
+  transform: scale(1.1);
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn[style*="gridColumn"] {
+  grid-column: span 2;
+  font-size: 11px !important;
+  font-weight: bold;
+  color: #1e293b;
+  background-color: rgba(255, 200, 100, 0.6) !important;
+  border: 1px solid #ff9800 !important;
+  padding: 6px 8px !important;
+  width: 100%;
+}
+
 .sidebar-emoji-picker {
   position: absolute;
   top: 100%;
@@ -1624,9 +1833,9 @@ button:disabled {
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
   z-index: 200;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 5px;
-  min-width: 180px;
+  min-width: 80px;
 }
 
 .sidebar-emoji-btn {
@@ -1634,9 +1843,9 @@ button:disabled {
   height: 40px;
   padding: 0;
   font-size: 1.4rem;
-  background: #475569;
+  background: #f5f5f5;
   border-radius: 8px;
-  border: none;
+  border: 1px solid #e5e5e5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1645,8 +1854,38 @@ button:disabled {
 }
 
 .sidebar-emoji-btn:hover {
-  background: #64748b;
+  background: #ebebeb;
   transform: scale(1.15);
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn {
+  width: auto;
+  height: auto;
+  padding: 8px;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn:hover {
+  background: rgba(200, 200, 200, 0.3);
+  transform: scale(1.1);
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn[style*="gridColumn"] {
+  font-size: 11px !important;
+  font-weight: bold;
+  color: #1e293b;
+  background-color: rgba(255, 200, 100, 0.6) !important;
+  border: 1px solid #ff9800 !important;
+  padding: 6px 8px !important;
+  grid-column: span 2 !important;
+}
+
+.sidebar-emoji-picker-always .sidebar-emoji-btn[style*="gridColumn"]:hover {
+  background-color: rgba(255, 180, 80, 0.8) !important;
+  transform: none;
 }
 
 .sidebar-emoji-btn img {

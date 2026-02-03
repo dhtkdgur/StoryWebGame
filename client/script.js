@@ -377,29 +377,116 @@ function renderPlayerStatus(players, writingStatus) {
   });
 }
 
-// 플레이어 사이드바 렌더링 (양쪽에 배치)
+// 프로필 배열 정렬: 본인은 왼쪽 첫 번째, 나머지는 지정된 규칙에 따라 배치
+function arrangeProfilesByRules(players) {
+  const playerArray = players || [];
+  const totalPlayers = playerArray.length;
+  
+  // 본인 찾기
+  const meIndex = playerArray.findIndex(p => p.id === socket.id);
+  const me = meIndex !== -1 ? playerArray[meIndex] : null;
+  
+  // 본인을 제외한 나머지 플레이어
+  const others = playerArray.filter(p => p.id !== socket.id);
+  
+  // 배치 규칙: 2열과 3열을 번갈아가며 채우기 (2열 -> 3열 -> 2열 -> 3열 ...)
+  // 본인은 2열 1행에 고정
+  const hasMe = !!me;
+  const col2Players = hasMe ? [me] : [];  // 2열에는 본인부터 시작 (본인이 있을 때만)
+  const col3Players = [];    // 3열
+  const col4Players = [];    // 4열 (9명부터)
+  
+  // 나머지 플레이어를 2열과 3열에 번갈아 배치
+  others.forEach((player, index) => {
+    if (hasMe) {
+      // 본인이 있을 때: 기존 parity 유지
+      if (index % 2 === 0) {
+        // 짝수 인덱스(0, 2, 4...): 3열(오른쪽)에 추가
+        col3Players.push(player);
+      } else {
+        // 홀수 인덱스(1, 3, 5...): 2열(왼쪽)에 추가
+        col2Players.push(player);
+      }
+    } else {
+      // 본인이 없을 때: parity 반전 (첫 번째 other가 2열로)
+      if (index % 2 === 0) {
+        // 짝수 인덱스(0, 2, 4...): 2열(왼쪽)에 추가
+        col2Players.push(player);
+      } else {
+        // 홀수 인덱스(1, 3, 5...): 3열(오른쪽)에 추가
+        col3Players.push(player);
+      }
+    }
+  });
+  
+  // 9명부터는 4열에 배치
+  // 8명(본인 1명 + 나머지 7명)까지는 2열, 3열만 사용
+  // 9명부터는 넘친 플레이어들을 4열에 배치
+  const maxCol2 = Math.ceil(8 / 2); // 2열 최대 4명 (본인 + 3명)
+  const maxCol3 = Math.floor(8 / 2); // 3열 최대 4명
+  
+  if (col2Players.length > maxCol2) {
+    col4Players.push(...col2Players.splice(maxCol2));
+  }
+  if (col3Players.length > maxCol3) {
+    col4Players.push(...col3Players.splice(maxCol3));
+  }
+  
+  return {
+    me,
+    col2: col2Players,      // 2열 플레이어들
+    col3: col3Players,      // 3열 플레이어들
+    col4: col4Players,      // 4열 플레이어들 (9명부터)
+    totalPlayers,
+    hasEmojiPanel: totalPlayers >= 9
+  };
+}
+
+// 플레이어 사이드바 렌더링 (1열: 이모티콘 | 2열: 플레이어 | 3열: 플레이어 | 4열: 플레이어)
 function renderPlayerSidebars(players, writingStatus) {
   if (!playersLeft || !playersRight) return;
 
   playersLeft.innerHTML = "";
   playersRight.innerHTML = "";
 
-  const playerArray = players || [];
-  const totalPlayers = playerArray.length;
-
-  // 홀수면 왼쪽이 하나 더 많게
-  const leftCount = Math.ceil(totalPlayers / 2);
-
-  playerArray.forEach((p, index) => {
-    const isLeftSide = index < leftCount;
-    const playerDiv = createSidebarPlayer(p, writingStatus, isLeftSide, "story");
-
-    if (isLeftSide) {
-      playersLeft.appendChild(playerDiv);
-    } else {
-      playersRight.appendChild(playerDiv);
-    }
+  const arranged = arrangeProfilesByRules(players);
+  
+  // ===== 왼쪽 사이드바 (1열: 이모티콘, 2열: 플레이어) =====
+  // 1열: 이모티콘 피커 (고정)
+  const emojiPickerDiv = document.createElement("div");
+  emojiPickerDiv.className = "sidebar-emoji-picker-always";
+  renderSidebarEmojiPicker(emojiPickerDiv);
+  playersLeft.appendChild(emojiPickerDiv);
+  
+  // 2열: 플레이어들 (본인부터)
+  const col2Container = document.createElement("div");
+  col2Container.className = "player-column";
+  arranged.col2.forEach((p) => {
+    const playerDiv = createSidebarPlayer(p, writingStatus, true, "story");
+    col2Container.appendChild(playerDiv);
   });
+  playersLeft.appendChild(col2Container);
+  
+  // ===== 오른쪽 사이드바 (3열: 플레이어, 4열: 플레이어) =====
+  // 3열: 플레이어들
+  const col3Container = document.createElement("div");
+  col3Container.className = "player-column";
+  arranged.col3.forEach((p) => {
+    const playerDiv = createSidebarPlayer(p, writingStatus, false, "story");
+    col3Container.appendChild(playerDiv);
+  });
+  playersRight.appendChild(col3Container);
+  
+  // 4열: 플레이어들 (9명부터)
+  if (arranged.col4.length > 0) {
+    const col4Container = document.createElement("div");
+    col4Container.className = "player-column";
+    arranged.col4.forEach((p) => {
+      const playerDiv = createSidebarPlayer(p, writingStatus, false, "story");
+      col4Container.appendChild(playerDiv);
+    });
+    playersRight.appendChild(col4Container);
+  }
 }
 
 // 키워드 화면용 플레이어 사이드바 렌더링
@@ -409,22 +496,44 @@ function renderPromptsSidebars(players, writingStatus) {
   promptsPlayersLeft.innerHTML = "";
   promptsPlayersRight.innerHTML = "";
 
-  const playerArray = players || [];
-  const totalPlayers = playerArray.length;
-
-  // 홀수면 왼쪽이 하나 더 많게
-  const leftCount = Math.ceil(totalPlayers / 2);
-
-  playerArray.forEach((p, index) => {
-    const isLeftSide = index < leftCount;
-    const playerDiv = createSidebarPlayer(p, writingStatus, isLeftSide, "prompts");
-
-    if (isLeftSide) {
-      promptsPlayersLeft.appendChild(playerDiv);
-    } else {
-      promptsPlayersRight.appendChild(playerDiv);
-    }
+  const arranged = arrangeProfilesByRules(players);
+  
+  // ===== 왼쪽 사이드바 (1열: 이모티콘, 2열: 플레이어) =====
+  // 1열: 이모티콘 피커 (고정)
+  const emojiPickerDiv = document.createElement("div");
+  emojiPickerDiv.className = "sidebar-emoji-picker-always";
+  renderSidebarEmojiPicker(emojiPickerDiv);
+  promptsPlayersLeft.appendChild(emojiPickerDiv);
+  
+  // 2열: 플레이어들 (본인부터)
+  const col2Container = document.createElement("div");
+  col2Container.className = "player-column";
+  arranged.col2.forEach((p) => {
+    const playerDiv = createSidebarPlayer(p, writingStatus, true, "prompts");
+    col2Container.appendChild(playerDiv);
   });
+  promptsPlayersLeft.appendChild(col2Container);
+  
+  // ===== 오른쪽 사이드바 (3열: 플레이어, 4열: 플레이어) =====
+  // 3열: 플레이어들
+  const col3Container = document.createElement("div");
+  col3Container.className = "player-column";
+  arranged.col3.forEach((p) => {
+    const playerDiv = createSidebarPlayer(p, writingStatus, false, "prompts");
+    col3Container.appendChild(playerDiv);
+  });
+  promptsPlayersRight.appendChild(col3Container);
+  
+  // 4열: 플레이어들 (9명부터)
+  if (arranged.col4.length > 0) {
+    const col4Container = document.createElement("div");
+    col4Container.className = "player-column";
+    arranged.col4.forEach((p) => {
+      const playerDiv = createSidebarPlayer(p, writingStatus, false, "prompts");
+      col4Container.appendChild(playerDiv);
+    });
+    promptsPlayersRight.appendChild(col4Container);
+  }
 }
 
 // 키워드 화면 사이드바 상태 업데이트
@@ -441,22 +550,17 @@ function updatePromptsSidebarStatus(players, writingStatus) {
     const isWritingNow = writingStatus?.[p.id] === true;
 
     // 클래스 업데이트
-    playerDiv.classList.remove("done", "writing");
-    if (isDone) {
-      playerDiv.classList.add("done");
-    } else if (isWritingNow) {
-      playerDiv.classList.add("writing");
-    }
+    playerDiv.className = `sidebar-player ${isDone ? "done" : (isWritingNow ? "writing" : "")} ${playerDiv.classList.contains("left-side") ? "left-side" : "right-side"}`;
 
-    // 상태 텍스트 업데이트
-    const statusDiv = playerDiv.querySelector(".player-status");
-    if (statusDiv) {
+    // 상태 배지 업데이트
+    const statusBadge = playerDiv.querySelector(".status-badge");
+    if (statusBadge) {
       if (isDone) {
-        statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="sidebar-status-icon" alt="완료"> 완료';
+        statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="badge-status-icon" alt="완료">';
       } else if (isWritingNow) {
-        statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="sidebar-status-icon" alt="작성중"> 작성중';
+        statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="badge-status-icon" alt="작성중">';
       } else {
-        statusDiv.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="sidebar-status-icon" alt="생각중"> 생각중';
+        statusBadge.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="badge-status-icon" alt="생각중">';
       }
     }
   });
@@ -471,112 +575,54 @@ function createSidebarPlayer(player, writingStatus, isLeftSide, screenType = "st
   const isMe = player.id === socket.id;
 
   const div = document.createElement("div");
-  div.className = `sidebar-player ${isDone ? "done" : (isWritingNow ? "writing" : "")}`;
+  div.className = `sidebar-player ${isDone ? "done" : (isWritingNow ? "writing" : "")} ${isLeftSide ? "left-side" : "right-side"}`;
   div.dataset.playerId = player.id;
 
-  // 아바타
-  const avatarDiv = document.createElement("div");
-  avatarDiv.className = "player-avatar";
+  // 프로필 컨테이너
+  const profileContainer = document.createElement("div");
+  profileContainer.className = "profile-container";
+
+  // 아바타 래퍼
+  const avatarWrapper = document.createElement("div");
+  avatarWrapper.className = "avatar-wrapper";
+
+  // 아바타 이미지
+  const avatarImg = document.createElement("img");
+  avatarImg.className = "avatar-img";
   const characterData = getCharacterById(player.avatar);
   if (characterData) {
-    // 게임 중용 - InGame 이미지 사용
-    avatarDiv.innerHTML = `<img src="${characterData.inGameImage}" alt="${characterData.name}">`;
+    avatarImg.src = characterData.inGameImage;
+    avatarImg.alt = characterData.name;
   } else {
-    avatarDiv.textContent = "👤";
+    avatarImg.src = DEFAULT_AVATAR;
+    avatarImg.alt = "프로필";
   }
 
-  // 이름
-  const nameDiv = document.createElement("div");
-  nameDiv.className = "player-name";
-  nameDiv.textContent = player.name;
-  div.title = player.name; // 툴팁
-
-  // 상태
-  const statusDiv = document.createElement("div");
-  statusDiv.className = "player-status";
+  // 상태 배지
+  const statusBadge = document.createElement("div");
+  statusBadge.className = "status-badge";
+  
+  // 상태에 따라 배지 내용 설정
   if (isDone) {
-    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="sidebar-status-icon" alt="완료"> 완료';
+    statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="badge-status-icon" alt="완료">';
   } else if (isWritingNow) {
-    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="sidebar-status-icon" alt="작성중"> 작성중';
+    statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="badge-status-icon" alt="작성중">';
   } else {
-    statusDiv.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="sidebar-status-icon" alt="생각중"> 생각중';
+    statusBadge.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="badge-status-icon" alt="생각중">';
   }
 
-  div.appendChild(avatarDiv);
-  div.appendChild(nameDiv);
-  div.appendChild(statusDiv);
+  avatarWrapper.appendChild(avatarImg);
+  avatarWrapper.appendChild(statusBadge);
 
-  // 본인 아바타 아래에만 이모티콘 버튼 추가
-  if (isMe) {
-    const emojiToggleBtn = document.createElement("button");
-    emojiToggleBtn.className = "sidebar-emoji-toggle";
-    emojiToggleBtn.textContent = "😊";
-    emojiToggleBtn.title = "이모티콘";
+  // 닉네임 태그
+  const nicknameTag = document.createElement("div");
+  nicknameTag.className = "nickname-tag";
+  nicknameTag.textContent = player.name;
 
-    const emojiPickerDiv = document.createElement("div");
-    emojiPickerDiv.className = "sidebar-emoji-picker hidden";
-    renderSidebarEmojiPicker(emojiPickerDiv);
+  profileContainer.appendChild(avatarWrapper);
+  profileContainer.appendChild(nicknameTag);
 
-    emojiToggleBtn.addEventListener("click", (e) => {
-      playSound('click');
-      e.stopPropagation();
-      
-      const isHidden = emojiPickerDiv.classList.contains("hidden");
-      
-      // 다른 모든 피커 닫기
-      document.querySelectorAll(".sidebar-emoji-picker").forEach(el => el.classList.add("hidden"));
-      
-      if (isHidden) {
-        emojiPickerDiv.classList.remove("hidden");
-        
-        // --- Dynamic Positioning Logic ---
-        // 왼쪽 사이드바면 오른쪽으로, 오른쪽이면 왼쪽으로
-        // "Left-aligned Profile: The emoticon window should open to the left" (Prompt requirement)
-        // -> However, standard is opening *inwards*. 
-        // -> Requirement says: "Left-aligned Profile: ... open to the left", "Right-aligned Profile: ... open to the right".
-        // -> This might push it off-screen. I will implement clamping.
-        
-        // Reset styles first
-        emojiPickerDiv.style.left = "";
-        emojiPickerDiv.style.right = "";
-        emojiPickerDiv.style.top = "100%";
-        emojiPickerDiv.style.transform = "";
-
-        if (isLeftSide) {
-           // Left Sidebar -> Open to the LEFT (same side as profile)
-           emojiPickerDiv.style.right = "105%"; // Open to the left
-           emojiPickerDiv.style.left = "auto";
-           emojiPickerDiv.style.top = "0";
-           emojiPickerDiv.style.transform = "none";
-        } else {
-           // Right Sidebar -> Open to the RIGHT (same side as profile)
-           emojiPickerDiv.style.left = "105%"; // Open to the right
-           emojiPickerDiv.style.right = "auto";
-           emojiPickerDiv.style.top = "0";
-           emojiPickerDiv.style.transform = "none";
-        }
-
-        // Clamping (Overflow protection)
-        const rect = emojiPickerDiv.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        
-        // If overflowing right edge
-        if (rect.right > viewportWidth) {
-          emojiPickerDiv.style.left = "auto";
-          emojiPickerDiv.style.right = "105%"; // Flip to left
-        }
-        
-        // If overflowing left edge
-        if (rect.left < 0) {
-          emojiPickerDiv.style.right = "auto";
-          emojiPickerDiv.style.left = "105%"; // Flip to right
-        }
-      }
-    });
-
-    div.appendChild(emojiToggleBtn);
-    div.appendChild(emojiPickerDiv);
-  }
+  div.appendChild(profileContainer);
 
   return div;
 }
@@ -594,16 +640,17 @@ function updateSidebarPlayerStatus(players, writingStatus) {
                       playersRight.querySelector(`[data-player-id="${p.id}"]`);
 
     if (playerDiv) {
-      playerDiv.className = `sidebar-player ${isDone ? "done" : (isWritingNow ? "writing" : "")}`;
+      playerDiv.className = `sidebar-player ${isDone ? "done" : (isWritingNow ? "writing" : "")} ${playerDiv.classList.contains("left-side") ? "left-side" : "right-side"}`;
 
-      const statusDiv = playerDiv.querySelector(".player-status");
-      if (statusDiv) {
+      // 상태 배지 업데이트 (게임 화면에서만)
+      const statusBadge = playerDiv.querySelector(".status-badge");
+      if (statusBadge) {
         if (isDone) {
-          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="sidebar-status-icon" alt="완료"> 완료';
+          statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성완료.png" class="badge-status-icon" alt="완료">';
         } else if (isWritingNow) {
-          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="sidebar-status-icon" alt="작성중"> 작성중';
+          statusBadge.innerHTML = '<img src="/image/04_스토리 적기/작성중.png" class="badge-status-icon" alt="작성중">';
         } else {
-          statusDiv.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="sidebar-status-icon" alt="생각중"> 생각중';
+          statusBadge.innerHTML = '<img src="/image/04_스토리 적기/생각중.png" class="badge-status-icon" alt="생각중">';
         }
       }
     }
@@ -614,6 +661,9 @@ function updateSidebarPlayerStatus(players, writingStatus) {
 // 아바타 목록 - 12개의 동물 캐릭터
 // type: "image" = 커스텀 이미지 (경로)
 // ---- 새로운 캐릭터 시스템 ----
+// 기본 아바타 (캐릭터 데이터 없을 때 사용)
+const DEFAULT_AVATAR = "./image/char/Char_InGame/Char_Circle_Alien.png";
+
 const CHARACTER_LIST = [
   { id: "alien", name: "Alien", chooseImage: "./image/char/Char_all/ChooseChar_Alien.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Alien.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Alien.png" },
   { id: "bear", name: "Racoon", chooseImage: "./image/char/Char_all/ChooseChar_Racoon.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Racoon.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Racoon.png" },
@@ -763,7 +813,7 @@ function renderSidebarEmojiPicker(container) {
       img.alt = emoji.id;
       btn.appendChild(img);
     } else if (emoji.type === "text") {
-      // 글씨 이모티콘 스타일링
+      // 글씨 이모티콘: 칸 2개 할당
       btn.textContent = emoji.content;
       btn.style.fontSize = "11px";
       btn.style.fontWeight = "bold";
@@ -772,6 +822,7 @@ function renderSidebarEmojiPicker(container) {
       btn.style.border = "1px solid #ff9800";
       btn.style.borderRadius = "6px";
       btn.style.padding = "3px 6px";
+      btn.style.gridColumn = "span 2"; // 칸 2개 할당
     } else {
       btn.textContent = emoji.content;
     }
@@ -849,6 +900,9 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
       emojiEl.style.padding = "4px 8px";
       emojiEl.style.borderRadius = "8px";
       emojiEl.style.border = "2px solid #ff9800";
+      emojiEl.style.whiteSpace = "nowrap";
+      emojiEl.style.display = "inline-flex";
+      emojiEl.style.alignItems = "center";
       emojiEl.textContent = emoji.content;
     } else {
       emojiEl.style.fontSize = "32px";
@@ -876,8 +930,10 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     emojiEl.style.left = relativeLeft + "px";
     emojiEl.style.transform = `rotate(${randomRotation}deg)`;
 
-    // 사이드바에 추가 (relative positioning을 위해)
-    parentSidebar.style.position = "relative";
+    // 사이드바에 추가 (position이 static일 때만 relative로 변경)
+    if (getComputedStyle(parentSidebar).position === "static") {
+      parentSidebar.style.position = "relative";
+    }
     parentSidebar.appendChild(emojiEl);
 
     // 애니메이션: 위로 올라가며 페이드아웃
@@ -921,6 +977,9 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
       iconDiv.appendChild(img);
     } else {
       iconDiv.textContent = emoji.content;
+      if (emoji.type === "text") {
+        iconDiv.style.whiteSpace = "nowrap";
+      }
     }
 
     const senderDiv = document.createElement("div");
@@ -1448,9 +1507,10 @@ function showNextChatMessage(entries, index) {
   messageDiv.className = "chat-message";
 
   const writerName = entry.writerName || "알 수 없음";
+  const writerId = entry.writerId;
 
-  // 플레이어 정보 찾기
-  const writer = (currentRoomState?.players || []).find(p => p.name === writerName);
+  // 플레이어 정보 찾기 (writerId로 찾아서 닉네임이 같아도 다른 플레이어 구분)
+  const writer = (currentRoomState?.players || []).find(p => p.id === writerId);
   const characterData = writer ? getCharacterById(writer.avatar) : null;
 
   // 아바타 요소 생성 (결과 화면용 - WaitingRoom 이미지)
@@ -1666,6 +1726,7 @@ function goByPhase(state) {
 
   if (state.phase === "story") {
     showScreen(screenStory);
+    wireStoryInputListeners();
     return;
   }
 
@@ -1712,6 +1773,14 @@ socket.on("room:state", (state) => {
   
   // 제출 상태에 따른 입력 잠금
   applyInputLocksFromState(state);
+  
+  // 사이드바 상태 업데이트 (제출 상태 즉시 반영)
+  if (state.phase === "prompt" && state.players) {
+    updatePromptsSidebarStatus(state.players, {});
+  } else if (state.phase === "story" && state.players) {
+    updateSidebarPlayerStatus(state.players, {});
+  }
+  
   lastPhase = state.phase;
 });
 
@@ -1969,6 +2038,28 @@ document.querySelectorAll(".input-prompt").forEach(input => {
   });
 });
 
+// Enter로 제출: 한 번만 등록
+let storyKeydownListenerRegistered = false;
+function wireStoryInputListeners() {
+  if (storyKeydownListenerRegistered) return;
+  
+  inputStoryText?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (e.shiftKey) return; // Shift+Enter는 줄바꿈 유지
+
+    const r = currentRoundPayload?.round;
+    if (typeof r !== "number") return;
+
+    e.preventDefault();
+
+    if (!inputStoryText.disabled && btnSubmitStory && !btnSubmitStory.disabled) {
+      submitStoryText(inputStoryText.value);
+    }
+  });
+  
+  storyKeydownListenerRegistered = true;
+}
+
 // 스토리 입력란 변화 감지: 제시어 사용 현황 UI 갱신 + 작성 중 상태 전송 + Auto Save
 inputStoryText?.addEventListener("input", () => {
   updatePromptUsageUI();
@@ -1999,22 +2090,6 @@ inputStoryText?.addEventListener("input", () => {
       socket.emit("story:writing", { writing: false, text: inputStoryText.value });
     }
   }, 1000);
-
-  // Enter로 제출
-  inputStoryText?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    if (e.shiftKey) return; // Shift+Enter는 줄바꿈 유지
-
-    const r = currentRoundPayload?.round;
-    if (typeof r !== "number") return;
-
-    e.preventDefault();
-
-    if (!inputStoryText.disabled && btnSubmitStory && !btnSubmitStory.disabled) {
-      submitStoryText(inputStoryText.value);
-    }
-  });
-
 });
 
 
@@ -2101,14 +2176,6 @@ function joinRoomWith(roomId) {
       joinRoomWith(roomCodeInputInline?.value);
     }
   });
-
-    if (room.players.length >= 12) {
-    return cb({
-      ok: false,
-      error: "입장 가능 인원이 초과 되었습니다.",
-    });
-  }
-
 }
 
 // join-inline의 Go 버튼
