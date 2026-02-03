@@ -1752,9 +1752,9 @@ button:disabled {
 .emoji-btn.emoji-text {
   font-size: 11px;
   font-weight: bold;
-  color: #1e293b;
-  background-color: rgba(255, 200, 100, 0.6);
-  border: 1px solid #ff9800;
+  color: #262341;
+  background-color: #FCB52D;
+  border: 1px solid #D99C27;
   padding: 6px 8px;
   grid-column: span 2;
 }
@@ -1765,7 +1765,7 @@ button:disabled {
 }
 
 .emoji-btn.emoji-text:hover {
-  background-color: rgba(255, 180, 80, 0.8);
+  background-color: #D99C27;
   transform: none;
 }
 
@@ -1783,7 +1783,7 @@ button:disabled {
   background: var(--card-bg);
   border-radius: 15px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border: 2px solid #cbd5e1;
+  border: none;
   padding: 12px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1814,9 +1814,9 @@ button:disabled {
   grid-column: span 2;
   font-size: 11px !important;
   font-weight: bold;
-  color: #1e293b;
-  background-color: rgba(255, 200, 100, 0.6) !important;
-  border: 1px solid #ff9800 !important;
+  color: #262341;
+  background-color: #FCB52D !important;
+  border: 1px solid #D99C27 !important;
   padding: 6px 8px !important;
   width: 100%;
 }
@@ -1845,7 +1845,7 @@ button:disabled {
   font-size: 1.4rem;
   background: #f5f5f5;
   border-radius: 8px;
-  border: 1px solid #e5e5e5;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
