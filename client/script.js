@@ -752,12 +752,13 @@ const EMOJI_LIST = [
   { id: "emoj12", type: "emoji", content: "👎" },
 
   // 글씨 이모티콘 추가
-  { id: "text1", type: "text", content: "대박" },
-  { id: "text2", type: "text", content: "ㅋㅋㅋ" },
-  { id: "text3", type: "text", content: "뭐해" },
-  { id: "text4", type: "text", content: "진짜?" },
-  { id: "text5", type: "text", content: "어이?" },
-  { id: "text6", type: "text", content: "띠용" },
+  { id: "text1", type: "text", content: "엥?" },
+  { id: "text2", type: "text", content: "메롱" },
+  { id: "text3", type: "text", content: "엄청나요!" },
+  { id: "text4", type: "text", content: "빨리 해주세요." },
+  { id: "text5", type: "text", content: "이거 진짜에요?" },
+  { id: "text6", type: "text", content: "심금을 울리네요." },
+  { id: "text7", type: "text", content: "이해할 수 없네요." },
 ];
 
 // 이모티콘 목록 렌더링 (전역 이모지 리스트용 - 기존 호환)
@@ -780,9 +781,9 @@ function renderEmojiList() {
       btn.textContent = emoji.content;
       btn.style.fontSize = "12px";
       btn.style.fontWeight = "bold";
-      btn.style.color = "#1e293b";
-      btn.style.backgroundColor = "rgba(255, 200, 100, 0.6)";
-      btn.style.border = "2px solid #ff9800";
+      btn.style.color = "#262341";
+      btn.style.backgroundColor = "#FCB52D";
+      btn.style.border = "1px solid #D99C27";
       btn.style.borderRadius = "8px";
       btn.style.padding = "4px 8px";
     } else {
@@ -817,9 +818,9 @@ function renderSidebarEmojiPicker(container) {
       btn.textContent = emoji.content;
       btn.style.fontSize = "11px";
       btn.style.fontWeight = "bold";
-      btn.style.color = "#1e293b";
-      btn.style.backgroundColor = "rgba(255, 200, 100, 0.6)";
-      btn.style.border = "1px solid #ff9800";
+      btn.style.color = "#262341";
+      btn.style.backgroundColor = "#FCB52D";
+      btn.style.border = "1px solid #D99C27";
       btn.style.borderRadius = "6px";
       btn.style.padding = "3px 6px";
       btn.style.gridColumn = "span 2"; // 칸 2개 할당
@@ -895,11 +896,11 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
       // 글씨 이모티콘 스타일
       emojiEl.style.fontSize = "14px";
       emojiEl.style.fontWeight = "bold";
-      emojiEl.style.color = "#1e293b";
-      emojiEl.style.backgroundColor = "rgba(255, 200, 100, 0.7)";
+      emojiEl.style.color = "#262341";
+      emojiEl.style.backgroundColor = "#FCB52D";
       emojiEl.style.padding = "4px 8px";
       emojiEl.style.borderRadius = "8px";
-      emojiEl.style.border = "2px solid #ff9800";
+      emojiEl.style.border = "1px solid #D99C27";
       emojiEl.style.whiteSpace = "nowrap";
       emojiEl.style.display = "inline-flex";
       emojiEl.style.alignItems = "center";
@@ -919,11 +920,21 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     let relativeLeft;
 
     if (isLeftSide) {
-      // 왼쪽 사이드바: 프로필 오른쪽에 표시 (좀 더 안쪽/바깥쪽 다양하게)
+      // 왼쪽 사이드바: 프로필 오른쪽에 표시 (바깥쪽으로)
       relativeLeft = playerRect.width + 20 + randomOffsetX;
     } else {
-      // 오른쪽 사이드바: 프로필 왼쪽에 표시
-      relativeLeft = -60 + randomOffsetX;
+      // 오른쪽 사이드바: 3열/4열 구분
+      // 사이드바 중앙을 기준으로 플레이어 위치 판단
+      const sidebarCenterX = sidebarRect.width / 2;
+      const playerCenterX = playerRect.left - sidebarRect.left + playerRect.width / 2;
+      
+      if (playerCenterX < sidebarCenterX) {
+        // 3열(안쪽): 프로필 왼쪽에 표시
+        relativeLeft = -60 + randomOffsetX;
+      } else {
+        // 4열(바깥쪽): 프로필 오른쪽에 표시 (프로필을 가리지 않을 정도로)
+        relativeLeft = playerRect.width + 120 + randomOffsetX;
+      }
     }
 
     emojiEl.style.top = relativeTop + "px";
