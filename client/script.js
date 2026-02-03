@@ -616,8 +616,8 @@ function updateSidebarPlayerStatus(players, writingStatus) {
 // ---- 새로운 캐릭터 시스템 ----
 const CHARACTER_LIST = [
   { id: "alien", name: "Alien", chooseImage: "./image/char/Char_all/ChooseChar_Alien.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Alien.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Alien.png" },
-  { id: "bear", name: "Bear", chooseImage: "./image/char/Char_all/ChooseChar_Bear.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
-  { id: "bear-1", name: "Bear-1", chooseImage: "./image/char/Char_all/ChooseChar_Bear-1.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Bear.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Bear.png" },
+  { id: "bear", name: "Racoon", chooseImage: "./image/char/Char_all/ChooseChar_Racoon.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Racoon.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Racoon.png" },
+  { id: "bear-1", name: "Tiger", chooseImage: "./image/char/Char_all/ChooseChar_Tiger.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Tiger.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Tiger.png" },
   { id: "crocodile", name: "Crocodile", chooseImage: "./image/char/Char_all/ChooseChar_Crocodile.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Crocodile.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Crocodile.png" },
   { id: "eagle", name: "Eagle", chooseImage: "./image/char/Char_all/ChooseChar_Eagle.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Eagle.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Eagle.png" },
   { id: "giraffe", name: "Giraffe", chooseImage: "./image/char/Char_all/ChooseChar_Giraffe.png", waitingRoomImage: "./image/char/Char_WaitingRoom_TTS/Char_Circle_Giraffe.png", inGameImage: "./image/char/Char_InGame/Char_Circle_Giraffe.png" },
@@ -1739,9 +1739,9 @@ socket.on("story:round", (payload) => {
   const notebookPanel = document.querySelector('.notebook-panel');
   if (notebookPanel) {
     if (currentRound === 0) {
-      notebookPanel.style.backgroundImage = "url('./image/Note_Asset_round_01.png')";
+      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_round_01.png')";
     } else {
-      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/공책.png')";
+      notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_Normal.png')";
     }
   }
 
@@ -1999,6 +1999,22 @@ inputStoryText?.addEventListener("input", () => {
       socket.emit("story:writing", { writing: false, text: inputStoryText.value });
     }
   }, 1000);
+
+  // Enter로 제출
+  inputStoryText?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (e.shiftKey) return; // Shift+Enter는 줄바꿈 유지
+
+    const r = currentRoundPayload?.round;
+    if (typeof r !== "number") return;
+
+    e.preventDefault();
+
+    if (!inputStoryText.disabled && btnSubmitStory && !btnSubmitStory.disabled) {
+      submitStoryText(inputStoryText.value);
+    }
+  });
+
 });
 
 
@@ -2047,10 +2063,16 @@ function joinRoomWith(roomId) {
   playSound('click');
 
   const rid = String(roomId || "").trim();
-  if (!rid) return alertError("그 방은 없는 방이에요…");
+  if (!rid) return alertError("그 방은 없는 방이에요…🙀");
 
   socket.emit("room:join", { roomId: rid, name: myName, avatar: myAvatar }, (res) => {
-    if (!res?.ok) return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    if (!res?.ok) {
+      if (res?.error === "ROOM_FULL") {
+        return alertError("입장 가능 인원이 초과 되었습니다.");
+      }
+      return alertError(`방 입장 실패: ${res?.error || "UNKNOWN"}`);
+    }
+
     playSound('enter');
 
     // 인라인 닫기
@@ -2083,7 +2105,7 @@ function joinRoomWith(roomId) {
     if (room.players.length >= 12) {
     return cb({
       ok: false,
-      error: "방 인원이 가득 찼어요",
+      error: "입장 가능 인원이 초과 되었습니다.",
     });
   }
 
@@ -2205,7 +2227,7 @@ btnSubmitPrompts?.addEventListener("click", () => {
 function submitStoryText(text, { auto = false } = {}) {
   const trimmed = String(text || "").trim();
   if (!trimmed) {
-    if (!auto) alertError("문장을 입력해줘!");
+    if (!auto) alertError("문장을 작성해 주세요.");
     return;
   }
 
@@ -2673,10 +2695,11 @@ updateMasterMuteButton();
 renderEmojiList();
 renderAvatarList();
 
-// 첫 번째 캐릭터를 기본으로 선택
+// 첫 화면 진입 시 아바타 랜덤 선택
 if (CHARACTER_LIST.length > 0) {
-  selectCharacter(CHARACTER_LIST[0].id);
+  selectRandomCharacter();
 }
+
 
 // ---- 초기 화면 ----
 showScreen(screenName);
