@@ -1554,26 +1554,6 @@ function processNextInQueue(finalCallback) {
     utterance.voice = koreanVoice;
   }
   
-  // 발화 완료 시 다음 문장 처리
-  utterance.onend = () => {
-    // 약간의 딜레이 후 다음 문장
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
-  };
-  
-  // 오류 처리
-  utterance.onerror = (e) => {
-    // interrupted는 cancel 호출 시 발생 - 무시
-    if (e.error !== "interrupted") {
-      console.error("TTS 오류:", e.error);
-    }
-    // 오류 발생해도 다음 문장 시도
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
-  };
-  
   // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
   // 주기적으로 resume 호출
   const resumeInterval = setInterval(() => {
@@ -1583,6 +1563,7 @@ function processNextInQueue(finalCallback) {
     }
   }, 5000);
   
+  // 발화 완료 시 다음 문장 처리
   utterance.onend = () => {
     clearInterval(resumeInterval);
     setTimeout(() => {
@@ -1590,11 +1571,14 @@ function processNextInQueue(finalCallback) {
     }, 100);
   };
   
+  // 오류 처리
   utterance.onerror = (e) => {
     clearInterval(resumeInterval);
+    // interrupted는 cancel 호출 시 발생 - 무시
     if (e.error !== "interrupted") {
       console.error("TTS 오류:", e.error);
     }
+    // 오류 발생해도 다음 문장 시도
     setTimeout(() => {
       processNextInQueue(finalCallback);
     }, 100);
