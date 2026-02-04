@@ -309,18 +309,9 @@
 <section id="screen-results" class="screen hidden">
   <div class="results-frame">
 
-    <!-- 왼쪽 패널 (첫번째 이미지의 이모티콘/리액션 영역) -->
+    <!-- 왼쪽 사이드바: 이모티콘 피커 + 본인 프로필 -->
     <aside class="results-left-panel">
-      <div class="results-left-inner">
-        <!-- 기존 결과 리액션 버튼을 왼쪽으로 이동 -->
-        <div class="result-emoji-section result-emoji-section--left">
-          <button id="btn-result-thumbsup" class="result-emoji-btn">👍</button>
-          <button id="btn-result-clap" class="result-emoji-btn">👏</button>
-        </div>
-
-        <!-- 필요하면: 여기 추가 버튼/리스트(이모티콘 여러개)도 넣을 자리 -->
-        <!-- <div class="result-emoji-list">...</div> -->
-      </div>
+      <div id="results-players-left" class="player-sidebar player-sidebar-left"></div>
     </aside>
 
     <!-- 가운데: 공책(채팅) -->

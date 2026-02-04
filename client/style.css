@@ -60,6 +60,8 @@ body.bg-main {
 
 #app {
   padding-top: 120px;
+  /* 스케일링 기준점 */
+  transform-origin: top center;
 }
 
 /* --------------------
@@ -1042,6 +1044,19 @@ button:disabled {
   display: block;
 }
 
+/* 작은 버튼들: 게임 나가기, 다시하기, 저장하기, 이전 이야기로 */
+#screen-results #btn-exit img,
+#screen-results #btn-restart img,
+#screen-results #btn-screenshot img,
+#screen-results #btn-prev img {
+  width: 100px;
+}
+
+/* 큰 버튼: 다음 이야기로 */
+#screen-results #btn-next-story img {
+  width: 150px;
+}
+
 #screen-results .result-emoji-section--left {
   display: flex;
   flex-direction: column;
@@ -1123,6 +1138,19 @@ button:disabled {
   height: auto;
   display: block;
   object-fit: contain;
+}
+
+/* 작은 버튼들: 게임 나가기, 다시하기, 저장하기, 이전 이야기로 */
+#btn-exit img,
+#btn-restart img,
+#btn-screenshot img,
+#btn-prev img {
+  width: 90px;
+}
+
+/* 큰 버튼: 다음 이야기로 */
+#btn-next-story img {
+  width: 130px;
 }
 
 .result-side-btn:hover {
@@ -1799,7 +1827,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  z-index: 50;
+  z-index: 999;
 }
 
 .sidebar-emoji-picker-always .sidebar-emoji-btn {
@@ -2122,6 +2150,8 @@ button:disabled {
   align-items: center;
   animation: resultEmojiRise var(--rise-duration, 3s) ease-out forwards;
   pointer-events: none;
+  border-radius: 12px;
+  padding: 8px 12px;
 }
 
 .result-emoji-float .emoji-content {
@@ -2134,12 +2164,13 @@ button:disabled {
 }
 
 .result-emoji-float .emoji-name {
-  font-size: 0.75rem;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  background: transparent;
+  padding: 2px 4px;
   margin-top: 4px;
   white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes resultEmojiRise {
@@ -2347,4 +2378,43 @@ button:disabled {
 
 #screen-results .chat-container .chat-writer {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* 결과 화면 이모지 피커 스타일 */
+.results-emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 12px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+}
+
+.results-emoji-picker .sidebar-emoji-btn {
+  padding: 8px;
+  font-size: 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.results-emoji-picker .sidebar-emoji-btn:hover {
+  background: rgba(200, 200, 200, 0.3);
+  transform: scale(1.1);
+}
+
+/* 결과 화면 사이드바에서 내 프로필 표시 */
+#results-players-left {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
 }
