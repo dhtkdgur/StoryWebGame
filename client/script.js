@@ -2158,33 +2158,32 @@ socket.on("story:round", (payload) => {
   const currentRound = payload.round ?? 0;
   const totalRounds = payload.totalRounds ?? 0;
 
+  const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
+
   // 라운드에 따라 배경 이미지 설정
   const notebookPanel = document.querySelector('.notebook-panel');
   if (notebookPanel) {
     if (currentRound === 0) {
       notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_round_01.png')";
+    } else if (isLastRound) {
+      notebookPanel.style.backgroundImage = "url('./image/05_엔딩/Note_Asset_Final_Round.png')";
     } else {
       notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_Normal.png')";
     }
   }
 
-  const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
-
   // 라운드 표기 UI
-
-  if (isLastRound) {
-    if (roundLabel) roundLabel.textContent = "마지막 라운드";
-  } else {
-    if (roundLabel) {
-      // 원래 형식으로 되돌리기 (HTML에 span이 있으니 innerHTML로 복구)
-      roundLabel.innerHTML = `라운드 <span id="display-round"></span> / <span id="display-total-rounds"></span>`;
-    }
-    // 복구 후 다시 잡기
-    const dr = document.getElementById("display-round");
-    const dt = document.getElementById("display-total-rounds");
-    if (dr) dr.textContent = String(currentRound + 1);
-    if (dt) dt.textContent = String(totalRounds);
+  if (roundLabel) {
+    roundLabel.innerHTML =
+      `라운드 <span id="display-round"></span> / <span id="display-total-rounds"></span>`;
   }
+
+  const dr = document.getElementById("display-round");
+  const dt = document.getElementById("display-total-rounds");
+
+  if (dr) dr.textContent = String(currentRound + 1);
+  if (dt) dt.textContent = String(totalRounds);
+
 
   // 혹시 다른 곳에서 displayRound/displayTotalRounds를 계속 쓰고 있으면 유지
   if (!isLastRound) {
