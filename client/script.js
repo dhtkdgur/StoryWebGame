@@ -91,6 +91,9 @@ const playersRight = $("players-right");
 const promptsPlayersLeft = $("prompts-players-left");
 const promptsPlayersRight = $("prompts-players-right");
 
+// player sidebar (결과 화면)
+const resultsPlayersLeft = $("results-players-left");
+
 // emoji (이모티콘)
 const btnEmojiToggle = $("btn-emoji-toggle");
 const emojiPicker = $("emoji-picker");
@@ -102,8 +105,6 @@ const avatarList = $("avatar-list");
 const avatarPreview = $("avatar-preview");
 
 // result emoji (결과 화면 이모티콘)
-const btnResultThumbsup = $("btn-result-thumbsup");
-const btnResultClap = $("btn-result-clap");
 const resultEmojiContainer = $("result-emoji-container");
 
 // round label and countdown
@@ -495,7 +496,11 @@ function renderPlayerSidebars(players, writingStatus) {
 
 // 키워드 화면용 플레이어 사이드바 렌더링
 function renderPromptsSidebars(players, writingStatus) {
-  if (!promptsPlayersLeft || !promptsPlayersRight) return;
+  console.log("📋 renderPromptsSidebars 호출됨, players:", players?.length);
+  if (!promptsPlayersLeft || !promptsPlayersRight) {
+    console.log("❌ promptsPlayersLeft 또는 promptsPlayersRight가 없음");
+    return;
+  }
 
   promptsPlayersLeft.innerHTML = "";
   promptsPlayersRight.innerHTML = "";
@@ -508,6 +513,7 @@ function renderPromptsSidebars(players, writingStatus) {
   emojiPickerDiv.className = "sidebar-emoji-picker-always";
   renderSidebarEmojiPicker(emojiPickerDiv);
   promptsPlayersLeft.appendChild(emojiPickerDiv);
+  console.log("✅ 이모티콘 피커가 추가됨, 버튼 수:", emojiPickerDiv.querySelectorAll("button").length);
   
   // 2열: 플레이어들 (본인부터)
   const col2Container = document.createElement("div");
@@ -568,6 +574,218 @@ function updatePromptsSidebarStatus(players, writingStatus) {
       }
     }
   });
+}
+
+// 결과 화면 사이드바 렌더링 (본인 프로필 + 이모티콘 피커만)
+function renderResultsSidebar() {
+  if (!resultsPlayersLeft) return;
+  
+  resultsPlayersLeft.innerHTML = "";
+  
+  // 본인 정보 찾기
+  const me = (currentRoomState?.players || []).find(p => p.id === socket.id);
+  
+  // 1열: 이모티콘 피커 (결과 화면용 - 클릭 시 떠오르는 효과)
+  const emojiPickerDiv = document.createElement("div");
+  emojiPickerDiv.className = "sidebar-emoji-picker-always results-emoji-picker";
+  renderResultsEmojiPicker(emojiPickerDiv);
+  resultsPlayersLeft.appendChild(emojiPickerDiv);
+  
+  // 2열: 본인 프로필만
+  if (me) {
+    const col2Container = document.createElement("div");
+    col2Container.className = "player-column";
+    const playerDiv = createResultsSidebarPlayer(me);
+    col2Container.appendChild(playerDiv);
+    resultsPlayersLeft.appendChild(col2Container);
+  }
+}
+
+// 결과 화면용 이모티콘 피커 렌더링 (클릭 시 떠오르는 효과)
+function renderResultsEmojiPicker(container) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  for (const emoji of EMOJI_LIST) {
+    const btn = document.createElement("button");
+    btn.className = "sidebar-emoji-btn";
+    btn.dataset.emojiId = emoji.id;
+
+    if (emoji.type === "image") {
+      const img = document.createElement("img");
+      img.src = emoji.content;
+      img.alt = emoji.id;
+      btn.appendChild(img);
+    } else if (emoji.type === "text") {
+      btn.textContent = emoji.content;
+      btn.style.fontSize = "11px";
+      btn.style.fontWeight = "bold";
+      btn.style.color = "#262341";
+      btn.style.backgroundColor = "#FCB52D";
+      btn.style.border = "1px solid #D99C27";
+      btn.style.borderRadius = "6px";
+      btn.style.padding = "3px 6px";
+      btn.style.gridColumn = "span 2";
+    } else {
+      btn.textContent = emoji.content;
+    }
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // 결과 화면 이모티콘 효과 (아래에서 올라오는 애니메이션)
+      sendResultEmojiFromPicker(emoji);
+    });
+
+    container.appendChild(btn);
+  }
+}
+
+// 결과 화면 이모티콘 전송 (피커에서)
+function sendResultEmojiFromPicker(emoji) {
+  playSound('click');
+  // 서버에 전송 (기존 result:emoji 이벤트 활용)
+  socket.emit("result:emoji", { emojiId: emoji.id, emojiContent: emoji.content, emojiType: emoji.type });
+}
+
+// 결과 화면 이모티콘 표시 (모든 이모티콘 지원)
+function displayResultEmojiFromPicker(senderName, emojiContent, senderColor) {
+  if (!resultEmojiContainer) return;
+
+  // emojiContent를 안전한 문자열로 정규화
+  const safeContent = (emojiContent == null) ? "" : String(emojiContent);
+  
+  // 빈 문자열이면 무시
+  if (!safeContent) return;
+
+  const color = senderColor || playerColorMap[senderName] || "#fbbf24";
+  const count = RESULT_EMOJI_CONFIG.count;
+
+  // 이모지 타입 추론
+  // 이미지: /image/로 시작하거나 http로 시작
+  // 텍스트: 한글이 포함되어 있거나 길이가 2보다 큼 (이모지는 보통 1-2자)
+  // 이모지: 그 외
+  let emojiType = "emoji";
+  if (safeContent.startsWith("/image/") || safeContent.startsWith("http")) {
+    emojiType = "image";
+  } else if (/[가-힣]/.test(safeContent) || safeContent.length > 2) {
+    emojiType = "text";
+  }
+
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      createResultEmojiFloatGeneric(senderName, safeContent, color, emojiType);
+    }, i * 80);
+  }
+}
+
+// 결과 화면 이모티콘 요소 생성 (모든 이모티콘 타입 지원)
+function createResultEmojiFloatGeneric(senderName, emojiContent, senderColor, emojiType) {
+  // emojiContent 방어적 처리
+  const safeContent = (emojiContent == null) ? "" : String(emojiContent);
+  
+  // 빈 콘텐츠면 무시
+  if (!safeContent) return;
+  
+  const container = document.createElement("div");
+  container.className = "result-emoji-float";
+
+  const screenWidth = window.innerWidth;
+  const minX = screenWidth * 0.1;
+  const maxX = screenWidth * 0.9;
+  const randomX = minX + Math.random() * (maxX - minX);
+  const startY = Math.random() * RESULT_EMOJI_CONFIG.maxStartY;
+  const riseHeight = RESULT_EMOJI_CONFIG.minRiseHeight +
+    Math.random() * (RESULT_EMOJI_CONFIG.maxRiseHeight - RESULT_EMOJI_CONFIG.minRiseHeight);
+  const duration = RESULT_EMOJI_CONFIG.minDuration +
+    Math.random() * (RESULT_EMOJI_CONFIG.maxDuration - RESULT_EMOJI_CONFIG.minDuration);
+
+  container.style.setProperty("--rise-height", `-${riseHeight}px`);
+  container.style.setProperty("--rise-duration", `${duration}s`);
+  container.style.left = `${randomX}px`;
+  container.style.bottom = `${startY}px`;
+
+  const emojiDiv = document.createElement("div");
+  emojiDiv.className = "emoji-content";
+  
+  if (emojiType === "image" && safeContent) {
+    const img = document.createElement("img");
+    img.src = safeContent;
+    img.alt = "emoji";
+    img.style.width = "40px";
+    img.style.height = "40px";
+    // 이미지 로드 실패 시 fallback
+    img.onerror = () => {
+      img.style.display = "none";
+      emojiDiv.textContent = "😊";
+      emojiDiv.style.fontSize = "2.5rem";
+    };
+    emojiDiv.appendChild(img);
+  } else if (emojiType === "text") {
+    // 글씨 이모티콘: 노란 배경 스타일 (플레이 중과 동일)
+    emojiDiv.style.fontSize = "14px";
+    emojiDiv.style.backgroundColor = "#FCB52D";
+    emojiDiv.style.padding = "4px 8px";
+    emojiDiv.style.borderRadius = "8px";
+    emojiDiv.style.border = "1px solid #D99C27";
+    emojiDiv.style.color = "#262341";
+    emojiDiv.style.fontWeight = "bold";
+    emojiDiv.style.whiteSpace = "nowrap";
+    emojiDiv.textContent = safeContent;
+  } else {
+    // 일반 이모지
+    emojiDiv.style.fontSize = "2.5rem";
+    emojiDiv.textContent = safeContent || "😊";
+  }
+
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "emoji-name";
+  nameDiv.textContent = senderName || "";
+  nameDiv.style.color = senderColor || "#fbbf24";
+  nameDiv.style.backgroundColor = "transparent";
+
+  container.appendChild(emojiDiv);
+  container.appendChild(nameDiv);
+  resultEmojiContainer.appendChild(container);
+
+  setTimeout(() => {
+    container.remove();
+  }, duration * 1000 + 100);
+}
+
+// 결과 화면 본인 프로필 요소 생성 (상태 배지 없음)
+function createResultsSidebarPlayer(player) {
+  const div = document.createElement("div");
+  div.className = "sidebar-player left-side";
+  div.dataset.playerId = player.id;
+
+  const profileContainer = document.createElement("div");
+  profileContainer.className = "profile-container";
+
+  const avatarWrapper = document.createElement("div");
+  avatarWrapper.className = "avatar-wrapper";
+
+  const avatarImg = document.createElement("img");
+  avatarImg.className = "avatar-img";
+  const characterData = getCharacterById(player.avatar);
+  if (characterData) {
+    avatarImg.src = characterData.inGameImage;
+    avatarImg.alt = characterData.name;
+  } else {
+    avatarImg.src = DEFAULT_AVATAR;
+    avatarImg.alt = "avatar";
+  }
+
+  avatarWrapper.appendChild(avatarImg);
+
+  const nicknameTag = document.createElement("div");
+  nicknameTag.className = "nickname-tag";
+  nicknameTag.textContent = player.name;
+
+  profileContainer.appendChild(avatarWrapper);
+  profileContainer.appendChild(nicknameTag);
+  div.appendChild(profileContainer);
+
+  return div;
 }
 
 // 사이드바 플레이어 요소 생성
@@ -804,6 +1022,7 @@ function renderEmojiList() {
 
 // 사이드바 이모티콘 피커 렌더링 (본인 아바타 아래용)
 function renderSidebarEmojiPicker(container) {
+  console.log("🎨 renderSidebarEmojiPicker 호출됨, container:", container);
   if (!container) return;
   container.innerHTML = "";
 
@@ -833,6 +1052,7 @@ function renderSidebarEmojiPicker(container) {
     }
 
     btn.addEventListener("click", (e) => {
+      console.log("🖱️ 이모티콘 버튼 클릭됨:", emoji.id);
       e.stopPropagation(); // 이벤트 버블링 방지
       sendEmoji(emoji.id);
     });
@@ -858,6 +1078,11 @@ function toggleEmojiPicker(show) {
 
 // 이모티콘 전송
 function sendEmoji(emojiId) {
+  console.log("🎭 sendEmoji 호출됨:", emojiId, "socket.connected:", socket.connected);
+  if (!socket.connected) {
+    console.error("❌ 소켓이 연결되어 있지 않습니다!");
+    return;
+  }
   playSound('click');
   socket.emit("emoji:send", { emojiId });
 }
@@ -865,14 +1090,33 @@ function sendEmoji(emojiId) {
 // 받은 이모티콘 표시 (플레이어 아바타 주위에 랜덤 위치로 표시)
 function displayReceivedEmoji(senderId, senderName, emojiId) {
   const emoji = EMOJI_LIST.find(e => e.id === emojiId);
-  if (!emoji) return;
+  if (!emoji) {
+    console.log("❌ 이모티콘을 찾을 수 없음:", emojiId);
+    return;
+  }
 
-  // 사이드바에서 해당 플레이어 찾기 (스토리 화면 + 키워드 화면 모두 검색)
-  const playerDiv = playersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
-                    playersRight?.querySelector(`[data-player-id="${senderId}"]`) ||
-                    promptsPlayersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
-                    promptsPlayersRight?.querySelector(`[data-player-id="${senderId}"]`);
+  // 현재 보이는 화면 확인
+  const isPromptsScreen = screenPrompts && !screenPrompts.classList.contains("hidden");
+  const isStoryScreen = screenStory && !screenStory.classList.contains("hidden");
+  
+  // 현재 화면에 맞는 사이드바에서만 플레이어 찾기
+  let playerDiv = null;
+  if (isPromptsScreen) {
+    playerDiv = promptsPlayersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
+                promptsPlayersRight?.querySelector(`[data-player-id="${senderId}"]`);
+  } else if (isStoryScreen) {
+    playerDiv = playersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
+                playersRight?.querySelector(`[data-player-id="${senderId}"]`);
+  } else {
+    // 둘 다 아니면 모든 사이드바 검색 (fallback)
+    playerDiv = playersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
+                playersRight?.querySelector(`[data-player-id="${senderId}"]`) ||
+                promptsPlayersLeft?.querySelector(`[data-player-id="${senderId}"]`) ||
+                promptsPlayersRight?.querySelector(`[data-player-id="${senderId}"]`);
+  }
 
+  console.log("🔍 플레이어 찾기:", senderId, "화면:", isPromptsScreen ? "prompts" : isStoryScreen ? "story" : "other", "결과:", playerDiv ? "찾음" : "못찾음");
+  
   if (playerDiv) {
     // 플레이어가 어느 사이드바에 있는지 확인
     const isLeftSide = playersLeft?.contains(playerDiv) || promptsPlayersLeft?.contains(playerDiv);
@@ -950,6 +1194,13 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
       parentSidebar.style.position = "relative";
     }
     parentSidebar.appendChild(emojiEl);
+    console.log("📍 이모티콘 추가됨:", {
+      parentSidebar: parentSidebar.id,
+      top: relativeTop,
+      left: relativeLeft,
+      sidebarOverflow: getComputedStyle(parentSidebar).overflow,
+      emojiEl: emojiEl
+    });
 
     // 애니메이션: 위로 올라가며 페이드아웃
     const animation = emojiEl.animate([
@@ -1079,13 +1330,15 @@ function createResultEmojiFloat(senderName, emojiContent, senderColor) {
   // 이모티콘 콘텐츠
   const emojiDiv = document.createElement("div");
   emojiDiv.className = "emoji-content";
+  emojiDiv.style.fontSize = "2.5rem";
   emojiDiv.textContent = emojiContent;
 
   // 보낸 사람 이름
   const nameDiv = document.createElement("div");
   nameDiv.className = "emoji-name";
   nameDiv.textContent = senderName;
-  nameDiv.style.color = senderColor; // 이름 색상 적용
+  nameDiv.style.color = senderColor;
+  nameDiv.style.backgroundColor = "transparent";
 
   container.appendChild(emojiDiv);
   container.appendChild(nameDiv);
@@ -1228,7 +1481,12 @@ if (window.speechSynthesis) {
 }
 
 // TTS 취소 함수
+let ttsQueue = []; // TTS 큐
+let isSpeaking = false; // 현재 발화 중인지
+
 function cancelTTS() {
+  ttsQueue = []; // 큐 비우기
+  isSpeaking = false;
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -1238,7 +1496,98 @@ function stopTTS() {
   cancelTTS();
 }
 
-// 텍스트 읽기 함수
+// 텍스트를 문장 단위로 분리
+function splitTextIntoSentences(text) {
+  if (!text) return [];
+  
+  // 문장 구분 (마침표, 물음표, 느낌표, 줄바꿈 기준)
+  // 단, 너무 짧은 조각은 합치기
+  const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
+  const sentences = [];
+  let buffer = "";
+  
+  for (const sentence of rawSentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    
+    buffer += (buffer ? " " : "") + trimmed;
+    
+    // 버퍼가 충분히 길거나 문장 끝이면 추가
+    if (buffer.length >= 30 || /[.!?。！？]$/.test(buffer)) {
+      sentences.push(buffer);
+      buffer = "";
+    }
+  }
+  
+  // 남은 버퍼 추가
+  if (buffer.trim()) {
+    sentences.push(buffer.trim());
+  }
+  
+  // 문장이 없으면 전체 텍스트를 하나의 문장으로
+  if (sentences.length === 0 && text.trim()) {
+    sentences.push(text.trim());
+  }
+  
+  return sentences;
+}
+
+// 큐에서 다음 문장 읽기
+function processNextInQueue(finalCallback) {
+  if (ttsQueue.length === 0) {
+    isSpeaking = false;
+    if (finalCallback) finalCallback();
+    return;
+  }
+  
+  isSpeaking = true;
+  const sentence = ttsQueue.shift();
+  
+  // 음성 발화 객체 생성
+  const utterance = new SpeechSynthesisUtterance(sentence);
+  utterance.lang = 'ko-KR';
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+  
+  if (koreanVoice) {
+    utterance.voice = koreanVoice;
+  }
+  
+  // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
+  // 주기적으로 resume 호출
+  const resumeInterval = setInterval(() => {
+    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }
+  }, 5000);
+  
+  // 발화 완료 시 다음 문장 처리
+  utterance.onend = () => {
+    clearInterval(resumeInterval);
+    setTimeout(() => {
+      processNextInQueue(finalCallback);
+    }, 100);
+  };
+  
+  // 오류 처리
+  utterance.onerror = (e) => {
+    clearInterval(resumeInterval);
+    // interrupted는 cancel 호출 시 발생 - 무시
+    if (e.error !== "interrupted") {
+      console.error("TTS 오류:", e.error);
+    }
+    // 오류 발생해도 다음 문장 시도
+    setTimeout(() => {
+      processNextInQueue(finalCallback);
+    }, 100);
+  };
+  
+  window.speechSynthesis.speak(utterance);
+}
+
+// 텍스트 읽기 함수 (긴 텍스트도 안정적으로 처리)
 function speakText(text, onEndCallback) {
   // TTS 비활성화 또는 텍스트 없으면 바로 콜백 호출
   if (!ttsEnabled || !text) {
@@ -1255,32 +1604,15 @@ function speakText(text, onEndCallback) {
 
   // 이전 TTS 중지
   cancelTTS();
-
-  // 음성 발화 객체 생성
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'ko-KR';
-  utterance.rate = 1.0;   // 속도 (0.1 ~ 10)
-  utterance.pitch = 1.0;  // 음높이 (0 ~ 2)
-  utterance.volume = 1.0; // 볼륨 (0 ~ 1)
-
-  // 한국어 음성 설정
-  if (koreanVoice) {
-    utterance.voice = koreanVoice;
-  }
-
-  // 발화 완료 시 콜백 호출
-  utterance.onend = () => {
-    if (onEndCallback) onEndCallback();
-  };
-
-  // 오류 처리
-  utterance.onerror = (e) => {
-    console.error("TTS 오류:", e.error);
-    if (onEndCallback) onEndCallback();
-  };
-
-  // 발화 시작
-  window.speechSynthesis.speak(utterance);
+  
+  // 텍스트를 문장 단위로 분리하여 큐에 추가
+  const sentences = splitTextIntoSentences(text);
+  ttsQueue = [...sentences];
+  
+  console.log("TTS 시작, 문장 수:", sentences.length);
+  
+  // 큐 처리 시작
+  processNextInQueue(onEndCallback);
 }
 
 // 폭죽 효과 표시
@@ -1447,6 +1779,9 @@ function initResultsPresentation(payload) {
     if (btnRestart) btnRestart.classList.remove("hidden");
     return;
   }
+
+  // 결과 화면 사이드바 렌더링 (이모지 피커 + 본인 프로필)
+  renderResultsSidebar();
 
   // 첫 스토리 표시 시작
   displayStory(0);
@@ -1741,6 +2076,10 @@ function goByPhase(state) {
 
   if (state.phase === "story") {
     showScreen(screenStory);
+    
+    // 플레이어 사이드바 렌더링 (스토리 화면) - 플레이어 목록 변경 반영
+    renderPlayerSidebars(state.players, {});
+    
     wireStoryInputListeners();
     return;
   }
@@ -1962,6 +2301,24 @@ socket.on("game:restarted", () => {
   if (btnSubmitPrompts) btnSubmitPrompts.disabled = false;
   if (waitMsg) waitMsg.classList.add("hidden");
 
+  // 상태 초기화
+  lastPhase = null;
+  resultData = null;
+  resultHostId = null;
+  currentChainIndex = 0;
+  displayedEntryCount = 0;
+  
+  // 이전 게임의 사이드바 초기화 (이모티콘 표시 오류 방지)
+  if (playersLeft) playersLeft.innerHTML = "";
+  if (playersRight) playersRight.innerHTML = "";
+  if (promptsPlayersLeft) promptsPlayersLeft.innerHTML = "";
+  if (promptsPlayersRight) promptsPlayersRight.innerHTML = "";
+  if (resultsPlayersLeft) resultsPlayersLeft.innerHTML = "";
+  
+  // TTS 중지
+  cancelTTS();
+  stopChatAnimation();
+
   showScreen(screenLobby);
 });
 
@@ -1988,9 +2345,19 @@ socket.on("emoji:received", ({ senderId, senderName, emojiId }) => {
 });
 
 // 결과 화면 이모티콘 수신
-socket.on("result:emojiReceived", ({ senderName, emojiType }) => {
-  console.log("🎉 결과 이모티콘 수신:", senderName, emojiType);
-  displayResultEmoji(senderName, emojiType);
+socket.on("result:emojiReceived", ({ senderName, emojiType, emojiId, emojiContent, senderColor }) => {
+  console.log("🎉 결과 이모티콘 수신:", senderName, emojiType, emojiId, emojiContent);
+  
+  // playerColorMap에서 먼저 색상 찾기 (결과 데이터에서 할당된 색상 사용)
+  const color = playerColorMap[senderName] || senderColor || "#fbbf24";
+  
+  // 새로운 이모지 피커에서 온 경우 (emojiContent가 있음)
+  if (emojiContent) {
+    displayResultEmojiFromPicker(senderName, emojiContent, color);
+  } else {
+    // 기존 버튼 방식 (👍, 👏)
+    displayResultEmoji(senderName, emojiType);
+  }
 });
 
 // 문장 좋아요 업데이트
@@ -2665,15 +3032,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ---- 결과 화면 이모티콘 버튼 핸들러 ----
-btnResultThumbsup?.addEventListener("click", () => {
-  sendResultEmoji("thumbsup");
-});
-
-btnResultClap?.addEventListener("click", () => {
-  sendResultEmoji("clap");
-});
-
 // ---- BGM 초기화 ----
 // 마스터 음량 상태
 let masterMuted = false;
@@ -2789,6 +3147,31 @@ masterMuteToggle?.addEventListener("click", () => {
 
 // 초기 뮤트 버튼 상태 설정
 updateMasterMuteButton();
+
+// ---- 반응형 스케일링 (가로 화면 기준) ----
+// 기준 해상도 (디자인 기준 해상도)
+const DESIGN_WIDTH = 1920;  // 디자인 기준 가로 해상도
+
+function applyResponsiveScale() {
+  const app = $("app");
+  if (!app) return;
+  
+  const windowWidth = window.innerWidth;
+  
+  // 화면 가로 크기 기준으로 스케일 계산
+  const scale = windowWidth / DESIGN_WIDTH;
+  
+  // 최소/최대 스케일 제한 (0.5 ~ 1.5)
+  const clampedScale = Math.min(Math.max(scale, 0.5), 1.5);
+  
+  app.style.transform = `scale(${clampedScale})`;
+  
+  console.log(`Window: ${windowWidth}px, Scale: ${clampedScale.toFixed(3)}`);
+}
+
+// 초기 실행 및 리사이즈 이벤트
+applyResponsiveScale();
+window.addEventListener('resize', applyResponsiveScale);
 
 // ---- 초기화 ----
 renderEmojiList();

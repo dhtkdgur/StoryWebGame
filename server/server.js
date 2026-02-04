@@ -72,14 +72,16 @@ function getRoomState(roomId) {
   const room = rooms[roomId];
   if (!room) return null;
 
-  // 플레이어 목록
-  const playersArr = Object.values(room.players).map((p) => ({
-    id: p.id,
-    name: p.name,
-    avatar: p.avatar || null,
-    joinedAt: p.joinedAt,
-    submitted: p.submitted,
-  }));
+  // 플레이어 목록 (연결 끊긴 플레이어 제외)
+  const playersArr = Object.values(room.players)
+    .filter((p) => !p.disconnected)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar || null,
+      joinedAt: p.joinedAt,
+      submitted: p.submitted,
+    }));
 
   const playerCount = playersArr.length;
 
@@ -1381,7 +1383,7 @@ io.on("connection", (socket) => {
 
   // ------------------------------------------------------------
   // 결과 화면 이모티콘 전송 (따봉/박수 애니메이션)
-  socket.on("result:emoji", ({ emojiType }, ack) => {
+  socket.on("result:emoji", ({ emojiType, emojiId, emojiContent }, ack) => {
     try {
       const rid = socket.data.roomId;
       const room = rid ? rooms[rid] : null;
@@ -1397,7 +1399,10 @@ io.on("connection", (socket) => {
       io.to(rid).emit("result:emojiReceived", {
         senderId: socket.id,
         senderName: player.name,
+        senderColor: player.color || "#ffffff",
         emojiType,
+        emojiId,
+        emojiContent,
       });
 
       ack?.({ ok: true });
