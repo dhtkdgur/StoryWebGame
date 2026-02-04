@@ -651,6 +651,12 @@ function sendResultEmojiFromPicker(emoji) {
 function displayResultEmojiFromPicker(senderName, emojiContent, senderColor) {
   if (!resultEmojiContainer) return;
 
+  // emojiContent를 안전한 문자열로 정규화
+  const safeContent = (emojiContent == null) ? "" : String(emojiContent);
+  
+  // 빈 문자열이면 무시
+  if (!safeContent) return;
+
   const color = senderColor || playerColorMap[senderName] || "#fbbf24";
   const count = RESULT_EMOJI_CONFIG.count;
 
@@ -659,21 +665,27 @@ function displayResultEmojiFromPicker(senderName, emojiContent, senderColor) {
   // 텍스트: 한글이 포함되어 있거나 길이가 2보다 큼 (이모지는 보통 1-2자)
   // 이모지: 그 외
   let emojiType = "emoji";
-  if (emojiContent.startsWith("/image/") || emojiContent.startsWith("http")) {
+  if (safeContent.startsWith("/image/") || safeContent.startsWith("http")) {
     emojiType = "image";
-  } else if (/[가-힣]/.test(emojiContent) || emojiContent.length > 2) {
+  } else if (/[가-힣]/.test(safeContent) || safeContent.length > 2) {
     emojiType = "text";
   }
 
   for (let i = 0; i < count; i++) {
     setTimeout(() => {
-      createResultEmojiFloatGeneric(senderName, emojiContent, color, emojiType);
+      createResultEmojiFloatGeneric(senderName, safeContent, color, emojiType);
     }, i * 80);
   }
 }
 
 // 결과 화면 이모티콘 요소 생성 (모든 이모티콘 타입 지원)
 function createResultEmojiFloatGeneric(senderName, emojiContent, senderColor, emojiType) {
+  // emojiContent 방어적 처리
+  const safeContent = (emojiContent == null) ? "" : String(emojiContent);
+  
+  // 빈 콘텐츠면 무시
+  if (!safeContent) return;
+  
   const container = document.createElement("div");
   container.className = "result-emoji-float";
 
@@ -695,12 +707,18 @@ function createResultEmojiFloatGeneric(senderName, emojiContent, senderColor, em
   const emojiDiv = document.createElement("div");
   emojiDiv.className = "emoji-content";
   
-  if (emojiType === "image") {
+  if (emojiType === "image" && safeContent) {
     const img = document.createElement("img");
-    img.src = emojiContent;
+    img.src = safeContent;
     img.alt = "emoji";
     img.style.width = "40px";
     img.style.height = "40px";
+    // 이미지 로드 실패 시 fallback
+    img.onerror = () => {
+      img.style.display = "none";
+      emojiDiv.textContent = "😊";
+      emojiDiv.style.fontSize = "2.5rem";
+    };
     emojiDiv.appendChild(img);
   } else if (emojiType === "text") {
     // 글씨 이모티콘: 노란 배경 스타일 (플레이 중과 동일)
@@ -712,17 +730,17 @@ function createResultEmojiFloatGeneric(senderName, emojiContent, senderColor, em
     emojiDiv.style.color = "#262341";
     emojiDiv.style.fontWeight = "bold";
     emojiDiv.style.whiteSpace = "nowrap";
-    emojiDiv.textContent = emojiContent;
+    emojiDiv.textContent = safeContent;
   } else {
     // 일반 이모지
     emojiDiv.style.fontSize = "2.5rem";
-    emojiDiv.textContent = emojiContent;
+    emojiDiv.textContent = safeContent || "😊";
   }
 
   const nameDiv = document.createElement("div");
   nameDiv.className = "emoji-name";
-  nameDiv.textContent = senderName;
-  nameDiv.style.color = senderColor;
+  nameDiv.textContent = senderName || "";
+  nameDiv.style.color = senderColor || "#fbbf24";
   nameDiv.style.backgroundColor = "transparent";
 
   container.appendChild(emojiDiv);
