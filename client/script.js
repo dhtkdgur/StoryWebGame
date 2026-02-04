@@ -1804,10 +1804,15 @@ function displayStory(chainIndex) {
 
   // 제목 표시
   if (storyTitle) {
+    storyTitle.style.visibility = "hidden";
     storyTitle.textContent = `${chain.ownerName}의 사생활`;
-    storyTitle.style.animation = "none";
-    storyTitle.offsetHeight;
-    storyTitle.style.animation = "fadeIn 0.5s ease";
+    // 다음 프레임에 표시 (레이아웃 계산 완료 후)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        storyTitle.style.visibility = "visible";
+        storyTitle.style.animation = "fadeIn 0.5s ease";
+      });
+    });
   }
 
   // 진행 상황 표시

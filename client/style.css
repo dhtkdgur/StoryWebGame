@@ -1080,31 +1080,20 @@ button:disabled {
 #screen-results .story-title {
   position: absolute;
   top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   z-index: 20;
-  display: inline-block;
+  text-align: center;
   white-space: nowrap;
   background: none;
   box-shadow: none;
   padding: 0;
   font-family: 'NostalgicMongtori', cursive;
-  font-size: 2.9rem;
+  font-size: 2.5rem;
   font-weight: normal;
   color: #1e293b;
+  visibility: hidden;
 }
-
-#screen-results .story-title::after {
-  content: "";
-  display: inline-block;
-  width: 80px;
-  height: 40px;
-  margin-left: 20px;
-  background: url("./image/05_엔딩/사생활 데코.png") no-repeat center / contain;
-  vertical-align: middle;
-  transform: translateY(-2px);
-}
-
 #screen-results .chat-avatar {
   width: 64px;
   height: 64px;
