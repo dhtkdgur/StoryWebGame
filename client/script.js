@@ -120,6 +120,10 @@ let isWriting = false; // 작성 중 상태
 let writingTimeout = null; // 작성 중 타이머
 let lastPhase = null; // 이전 단계 추적용
 
+// 타이머 알림음 재생 여부 추적
+let promptTimeoutSoundPlayed = false;
+let storyTimeoutSoundPlayed = false;
+
 // 결과 화면 상태
 let resultData = null;       // 전체 결과 데이터
 let resultHostId = null;     // 결과 화면의 방장 ID
@@ -1893,6 +1897,17 @@ socket.on("prompt:timer", ({ secondsLeft }) => {
     // 색상 통일
     displayPromptTimer.style.color = "#1e293b";
   }
+
+  // 5초 전 알림음 (한 번만 재생)
+  if (secondsLeft === 5 && !promptTimeoutSoundPlayed) {
+    playSound('beforeTimeout');
+    promptTimeoutSoundPlayed = true;
+  }
+
+  // 타이머 리셋 (새 라운드 시작 시)
+  if (secondsLeft > 5) {
+    promptTimeoutSoundPlayed = false;
+  }
 });
 
 socket.on("story:timer", ({ secondsLeft }) => {
@@ -1900,9 +1915,15 @@ socket.on("story:timer", ({ secondsLeft }) => {
     displayTimer.textContent = `${secondsLeft}s`;
   }
 
-  // 마지막 5초 동안 매초 카운팅 사운드
-  if (secondsLeft > 0 && secondsLeft <= 5) {
-    playSound('timeUp');
+  // 5초 전 알림음 (한 번만 재생)
+  if (secondsLeft === 5 && !storyTimeoutSoundPlayed) {
+    playSound('beforeTimeout');
+    storyTimeoutSoundPlayed = true;
+  }
+
+  // 타이머 리셋 (새 라운드 시작 시)
+  if (secondsLeft > 5) {
+    storyTimeoutSoundPlayed = false;
   }
 
   if (secondsLeft <= 0) {
@@ -2781,4 +2802,3 @@ if (CHARACTER_LIST.length > 0) {
 
 // ---- 초기 화면 ----
 showScreen(screenName);
-
