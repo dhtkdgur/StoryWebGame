@@ -582,23 +582,11 @@ function renderResultsSidebar() {
   
   resultsPlayersLeft.innerHTML = "";
   
-  // 본인 정보 찾기
-  const me = (currentRoomState?.players || []).find(p => p.id === socket.id);
-  
-  // 1열: 이모티콘 피커 (결과 화면용 - 클릭 시 떠오르는 효과)
+  // 이모티콘 피커만 표시 (결과 화면용 - 클릭 시 떠오르는 효과)
   const emojiPickerDiv = document.createElement("div");
   emojiPickerDiv.className = "sidebar-emoji-picker-always results-emoji-picker";
   renderResultsEmojiPicker(emojiPickerDiv);
   resultsPlayersLeft.appendChild(emojiPickerDiv);
-  
-  // 2열: 본인 프로필만
-  if (me) {
-    const col2Container = document.createElement("div");
-    col2Container.className = "player-column";
-    const playerDiv = createResultsSidebarPlayer(me);
-    col2Container.appendChild(playerDiv);
-    resultsPlayersLeft.appendChild(col2Container);
-  }
 }
 
 // 결과 화면용 이모티콘 피커 렌더링 (클릭 시 떠오르는 효과)
@@ -1729,31 +1717,39 @@ function renderStorySoFar(entries, round) {
   const totalText = (entries || []).map(e => e?.text || "").join(" ");
   const textLength = totalText.length;
   
-  // 텍스트 길이에 따라 폰트 크기 자동 조정
-  let fontSize = 1.3; // 기본 크기 (1.3rem)
-  
+  // 400자 이상이면 스크롤바 표시, 미만이면 폰트 크기 조정
   if (textLength > 400) {
-    fontSize = 0.7;   // 매우 긴 텍스트
-  } else if (textLength > 300) {
-    fontSize = 0.8;   // 아주 긴 텍스트
-  } else if (textLength > 200) {
-    fontSize = 0.9;   // 긴 텍스트
-  } else if (textLength > 150) {
-    fontSize = 1.0;   // 중간 정도 긴 텍스트
-  } else if (textLength > 100) {
-    fontSize = 1.05;  // 약간 긴 텍스트
-  } else if (textLength > 70) {
-    fontSize = 1.1;   // 보통보다 약간 긴
-  } else if (textLength > 50) {
-    fontSize = 1.15;  // 보통 길이
-  } else if (textLength > 30) {
-    fontSize = 1.2;   // 짧은 편
-  } else if (textLength > 20) {
-    fontSize = 1.25;  // 매우 짧은 편
+    // 400자 넘으면 글자 크기 고정하고 스크롤바 표시
+    storySoFar.classList.add('show-scroll');
+    storySoFar.style.fontSize = '1.1rem';
+  } else {
+    // 400자 이하면 기존 로직대로 글자 크기 조정
+    storySoFar.classList.remove('show-scroll');
+    
+    let fontSize = 1.3; // 기본 크기 (1.3rem)
+    
+    if (textLength > 300) {
+      fontSize = 0.8;   // 아주 긴 텍스트
+    } else if (textLength > 200) {
+      fontSize = 0.9;   // 긴 텍스트
+    } else if (textLength > 150) {
+      fontSize = 1.0;   // 중간 정도 긴 텍스트
+    } else if (textLength > 100) {
+      fontSize = 1.05;  // 약간 긴 텍스트
+    } else if (textLength > 70) {
+      fontSize = 1.1;   // 보통보다 약간 긴
+    } else if (textLength > 50) {
+      fontSize = 1.15;  // 보통 길이
+    } else if (textLength > 30) {
+      fontSize = 1.2;   // 짧은 편
+    } else if (textLength > 20) {
+      fontSize = 1.25;  // 매우 짧은 편
+    }
+    // 20자 이하는 기본 크기 1.3rem 유지
+    
+    storySoFar.style.fontSize = `${fontSize}rem`;
   }
-  // 20자 이하는 기본 크기 1.3rem 유지
-  
-  storySoFar.style.fontSize = `${fontSize}rem`;
+
 
 }
 
