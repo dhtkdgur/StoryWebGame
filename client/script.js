@@ -1725,6 +1725,36 @@ function renderStorySoFar(entries, round) {
   })
   .join("");
 
+  // 전체 텍스트 길이 계산
+  const totalText = (entries || []).map(e => e?.text || "").join(" ");
+  const textLength = totalText.length;
+  
+  // 텍스트 길이에 따라 폰트 크기 자동 조정
+  let fontSize = 1.3; // 기본 크기 (1.3rem)
+  
+  if (textLength > 400) {
+    fontSize = 0.7;   // 매우 긴 텍스트
+  } else if (textLength > 300) {
+    fontSize = 0.8;   // 아주 긴 텍스트
+  } else if (textLength > 200) {
+    fontSize = 0.9;   // 긴 텍스트
+  } else if (textLength > 150) {
+    fontSize = 1.0;   // 중간 정도 긴 텍스트
+  } else if (textLength > 100) {
+    fontSize = 1.05;  // 약간 긴 텍스트
+  } else if (textLength > 70) {
+    fontSize = 1.1;   // 보통보다 약간 긴
+  } else if (textLength > 50) {
+    fontSize = 1.15;  // 보통 길이
+  } else if (textLength > 30) {
+    fontSize = 1.2;   // 짧은 편
+  } else if (textLength > 20) {
+    fontSize = 1.25;  // 매우 짧은 편
+  }
+  // 20자 이하는 기본 크기 1.3rem 유지
+  
+  storySoFar.style.fontSize = `${fontSize}rem`;
+
 }
 
 // 방장 여부 체크
