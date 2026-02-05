@@ -147,11 +147,12 @@ function resetForNewGame(room) {
   room.phase = "prompt";
   ensureGame(room);
 
-  const ids = Object.keys(room.players);
+  const ids = Object.keys(room.players).filter((sid) => !room.players[sid].disconnected);
 
   room.game.round = 0;
-  room.game.turnOrder = ids.slice(); // 플레이어 순서 고정
-  room.game.totalRounds = Math.max(1, ids.length);
+  room.game.turnOrder = shuffle(ids.slice()); // 새 판마다 섞기
+  room.game.totalRounds = Math.max(1, room.game.turnOrder.length);
+
 
   room.game.promptPool = {};
   room.game.inboxPrompts = {};
@@ -212,17 +213,16 @@ function startPromptTimer(roomId) {
       const currentRoom = getRoom(roomId);
       if (!currentRoom || currentRoom.phase !== "prompt") return;
 
-      // 타임아웃 시 제출하지 않은 플레이어는 빈 키워드 자동 제출
-      const ids = Object.keys(currentRoom.players);
+      const ids = Object.keys(currentRoom.players).filter((sid) => !currentRoom.players[sid].disconnected);
       for (const sid of ids) {
         const p = currentRoom.players[sid];
         if (!p.submitted.prompts) {
-          // 빈 키워드로 자동 제출 (3개)
           p.prompts = ["기본", "단어", "제출"];
           p.submitted.prompts = true;
           currentRoom.game.promptPool[sid] = p.prompts;
         }
       }
+
 
       // 모두 제출 완료 처리
       if (allPromptsSubmitted(currentRoom)) {

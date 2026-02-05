@@ -1055,6 +1055,7 @@ button:disabled {
 /* 큰 버튼: 다음 이야기로 */
 #screen-results #btn-next-story img {
   width: 150px;
+  margin-left: 55px;
 }
 
 #screen-results .result-emoji-section--left {
@@ -1241,14 +1242,31 @@ button:disabled {
   }
 }
 
-#btn-restart {
-  margin-top: 10px;
+#btn-exit img {
+  width: 160px;
+}
+
+/* 개별 버튼 간격 조정 */
+#screen-results #btn-exit {
+  margin-bottom: 0px;
+}
+
+#screen-results #btn-restart {
+  margin-top: 0px;
   background: transparent !important;
   padding: 5px !important;
 }
 
-#btn-exit img {
-  width: 160px;
+#screen-results #btn-screenshot {
+  margin-top: 0px;
+}
+
+#screen-results #btn-prev {
+  margin-top: 0px;
+}
+
+#screen-results #btn-next-story {
+  margin-top: 15px; 
 }
 
 .prompt-highlight {
