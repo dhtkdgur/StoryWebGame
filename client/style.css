@@ -615,8 +615,8 @@ button:disabled {
 
 #btn-join-inline {
   position: absolute !important;
-  left: 70px !important;
-  top: 350px !important;
+  left: 90px !important;
+  top: 355px !important;
   transform: none !important;
 }
 
@@ -699,7 +699,7 @@ button:disabled {
   gap: 10px;
   padding: 5px 8px;
   width: fit-content;
-  margin-left: 20px;
+  margin-left: 30px;
 }
 
 .player-avatar-img {
