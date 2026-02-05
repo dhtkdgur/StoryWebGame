@@ -1973,6 +1973,10 @@ function updateResultButtons(isAnimating = false) {
   const entries = chain?.entries || [];
   const allDisplayed = displayedEntryCount >= entries.length;
 
+  if (screenResults) {
+    screenResults.classList.toggle("results-host", isHost);
+  }
+
   // 이전/다음 버튼은 방장만 표시
   if (btnPrev) {
     if (isHost) {
@@ -2264,7 +2268,7 @@ socket.on("prompt:timer", ({ secondsLeft }) => {
   if (displayPromptTimer) {
     displayPromptTimer.textContent = `${secondsLeft}s`;
     // 색상 통일
-    displayPromptTimer.style.color = "#1e293b";
+    displayPromptTimer.style.color = "#f8fafc";
   }
 
   // 5초 전 알림음 (한 번만 재생)
@@ -3200,7 +3204,7 @@ function applyResponsiveScale() {
 }
 
 // 초기 실행 및 리사이즈 이벤트
-applyResponsiveScale();
+window.addEventListener('load', applyResponsiveScale);
 window.addEventListener('resize', applyResponsiveScale);
 
 // ---- 초기화 ----
