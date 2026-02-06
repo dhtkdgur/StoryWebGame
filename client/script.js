@@ -582,23 +582,11 @@ function renderResultsSidebar() {
   
   resultsPlayersLeft.innerHTML = "";
   
-  // 본인 정보 찾기
-  const me = (currentRoomState?.players || []).find(p => p.id === socket.id);
-  
-  // 1열: 이모티콘 피커 (결과 화면용 - 클릭 시 떠오르는 효과)
+  // 이모티콘 피커만 표시 (결과 화면용 - 클릭 시 떠오르는 효과)
   const emojiPickerDiv = document.createElement("div");
   emojiPickerDiv.className = "sidebar-emoji-picker-always results-emoji-picker";
   renderResultsEmojiPicker(emojiPickerDiv);
   resultsPlayersLeft.appendChild(emojiPickerDiv);
-  
-  // 2열: 본인 프로필만
-  if (me) {
-    const col2Container = document.createElement("div");
-    col2Container.className = "player-column";
-    const playerDiv = createResultsSidebarPlayer(me);
-    col2Container.appendChild(playerDiv);
-    resultsPlayersLeft.appendChild(col2Container);
-  }
 }
 
 // 결과 화면용 이모티콘 피커 렌더링 (클릭 시 떠오르는 효과)
@@ -1126,15 +1114,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     else if (promptsPlayersLeft?.contains(playerDiv)) parentSidebar = promptsPlayersLeft;
     else parentSidebar = promptsPlayersRight;
 
+    // 현재 화면 컨테이너 찾기 (스케일이 적용되는 #app 내부)
+    let currentScreen = null;
+    if (isPromptsScreen && screenPrompts) currentScreen = screenPrompts;
+    else if (isStoryScreen && screenStory) currentScreen = screenStory;
+    
+    // 화면을 찾지 못한 경우 fallback
+    if (!currentScreen) {
+      currentScreen = document.querySelector('.screen:not(.hidden)') || document.body;
+    }
+
     // 플레이어 위치 가져오기
     const playerRect = playerDiv.getBoundingClientRect();
-    const sidebarRect = parentSidebar.getBoundingClientRect();
+    const screenRect = currentScreen.getBoundingClientRect();
 
     // 이모티콘 엘리먼트 생성
     const emojiEl = document.createElement("div");
     emojiEl.className = "player-emoji-floating";
-    emojiEl.style.position = "absolute";
-    emojiEl.style.zIndex = "100";
+    emojiEl.style.position = "absolute"; // fixed → absolute로 변경 (화면 내 상대 위치)
+    emojiEl.style.zIndex = "9999"; // z-index를 매우 높게 설정
     emojiEl.style.pointerEvents = "none";
 
     if (emoji.type === "image") {
@@ -1163,25 +1161,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     const randomOffsetY = (Math.random() - 0.5) * 100; // -50px ~ +50px
     const randomRotation = (Math.random() - 0.5) * 60; // -30deg ~ +30deg
 
-    // 사이드바 기준 위치 계산
-    const relativeTop = playerRect.top - sidebarRect.top + playerRect.height / 2 + randomOffsetY;
+    // 화면 컨테이너 기준 위치 계산
+    const relativeTop = playerRect.top - screenRect.top + playerRect.height / 2 + randomOffsetY;
     let relativeLeft;
 
     if (isLeftSide) {
       // 왼쪽 사이드바: 프로필 오른쪽에 표시 (바깥쪽으로)
-      relativeLeft = playerRect.width + 20 + randomOffsetX;
+      relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
     } else {
       // 오른쪽 사이드바: 3열/4열 구분
-      // 사이드바 중앙을 기준으로 플레이어 위치 판단
-      const sidebarCenterX = sidebarRect.width / 2;
-      const playerCenterX = playerRect.left - sidebarRect.left + playerRect.width / 2;
+      const sidebarRect = parentSidebar.getBoundingClientRect();
+      const sidebarCenterX = sidebarRect.left + sidebarRect.width / 2;
+      const playerCenterX = playerRect.left + playerRect.width / 2;
       
       if (playerCenterX < sidebarCenterX) {
         // 3열(안쪽): 프로필 왼쪽에 표시
-        relativeLeft = -60 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left - 60 + randomOffsetX;
       } else {
         // 4열(바깥쪽): 프로필 오른쪽에 표시 (프로필을 가리지 않을 정도로)
-        relativeLeft = playerRect.width + 120 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
       }
     }
 
@@ -1189,16 +1187,15 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     emojiEl.style.left = relativeLeft + "px";
     emojiEl.style.transform = `rotate(${randomRotation}deg)`;
 
-    // 사이드바에 추가 (position이 static일 때만 relative로 변경)
-    if (getComputedStyle(parentSidebar).position === "static") {
-      parentSidebar.style.position = "relative";
+    // 현재 화면에 추가하여 스케일 적용을 받도록 함
+    if (getComputedStyle(currentScreen).position === "static") {
+      currentScreen.style.position = "relative";
     }
-    parentSidebar.appendChild(emojiEl);
+    currentScreen.appendChild(emojiEl);
     console.log("📍 이모티콘 추가됨:", {
-      parentSidebar: parentSidebar.id,
+      currentScreen: currentScreen.id || currentScreen.className,
       top: relativeTop,
       left: relativeLeft,
-      sidebarOverflow: getComputedStyle(parentSidebar).overflow,
       emojiEl: emojiEl
     });
 
@@ -1655,6 +1652,7 @@ function showFireworks(element) {
 function showPoopFireworks(element) {
   const poopColors = ["#8B4513", "#A0522D", "#6B3410", "#D2691E", "#CD853F"];
 
+  // 똥 색깔 파티클 생성
   for (let i = 0; i < 20; i++) {
     const particle = document.createElement("div");
     particle.style.cssText = `
@@ -1676,6 +1674,7 @@ function showPoopFireworks(element) {
 
     document.body.appendChild(particle);
 
+    // 랜덤 방향으로 애니메이션
     const angle = (Math.PI * 2 * i) / 20;
     const distance = 50 + Math.random() * 50;
     const endX = startX + Math.cos(angle) * distance;
@@ -1695,6 +1694,7 @@ function showPoopFireworks(element) {
     };
   }
 
+  // 똥 이모지 폭죽 효과
   const poopEmojis = ["💩", "💩", "💩", "😡", "🤬"];
   for (let i = 0; i < 5; i++) {
     setTimeout(() => {
@@ -1757,6 +1757,44 @@ function renderStorySoFar(entries, round) {
     return `<div style="margin-bottom:8px;">${highlightKeywords(t, kws)}</div>`;
   })
   .join("");
+
+  // 전체 텍스트 길이 계산
+  const totalText = (entries || []).map(e => e?.text || "").join(" ");
+  const textLength = totalText.length;
+  
+  // 400자 이상이면 스크롤바 표시, 미만이면 폰트 크기 조정
+  if (textLength > 400) {
+    // 400자 넘으면 글자 크기 고정하고 스크롤바 표시
+    storySoFar.classList.add('show-scroll');
+    storySoFar.style.fontSize = '1.1rem';
+  } else {
+    // 400자 이하면 기존 로직대로 글자 크기 조정
+    storySoFar.classList.remove('show-scroll');
+    
+    let fontSize = 1.3; // 기본 크기 (1.3rem)
+    
+    if (textLength > 300) {
+      fontSize = 0.8;   // 아주 긴 텍스트
+    } else if (textLength > 200) {
+      fontSize = 0.9;   // 긴 텍스트
+    } else if (textLength > 150) {
+      fontSize = 1.0;   // 중간 정도 긴 텍스트
+    } else if (textLength > 100) {
+      fontSize = 1.05;  // 약간 긴 텍스트
+    } else if (textLength > 70) {
+      fontSize = 1.1;   // 보통보다 약간 긴
+    } else if (textLength > 50) {
+      fontSize = 1.15;  // 보통 길이
+    } else if (textLength > 30) {
+      fontSize = 1.2;   // 짧은 편
+    } else if (textLength > 20) {
+      fontSize = 1.25;  // 매우 짧은 편
+    }
+    // 20자 이하는 기본 크기 1.3rem 유지
+    
+    storySoFar.style.fontSize = `${fontSize}rem`;
+  }
+
 
 }
 
@@ -1837,10 +1875,15 @@ function displayStory(chainIndex) {
 
   // 제목 표시
   if (storyTitle) {
+    storyTitle.style.visibility = "hidden";
     storyTitle.textContent = `${chain.ownerName}의 사생활`;
-    storyTitle.style.animation = "none";
-    storyTitle.offsetHeight;
-    storyTitle.style.animation = "fadeIn 0.5s ease";
+    // 다음 프레임에 표시 (레이아웃 계산 완료 후)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        storyTitle.style.visibility = "visible";
+        storyTitle.style.animation = "fadeIn 0.5s ease";
+      });
+    });
   }
 
   // 진행 상황 표시
@@ -1916,43 +1959,100 @@ function showNextChatMessage(entries, index) {
   bubbleDiv.className = "chat-bubble";
   bubbleDiv.innerHTML = highlightKeywords(entry.text || "", entry.usedKeywords || []);
 
+  // 리액션 버튼 컨테이너
+  const reactionContainer = document.createElement("div");
+  reactionContainer.style.cssText = "display: flex; gap: 10px; margin-top: 5px; pointer-events: auto !important; position: relative; z-index: 999 !important;";
+
   // 좋아요 버튼 추가
   const likeBtn = document.createElement("button");
+  likeBtn.type = "button";
   likeBtn.className = "like-btn";
-  likeBtn.innerHTML = `<span class="like-icon">❤️</span> <span class="like-count">0</span>`;
+  likeBtn.disabled = false;
+  likeBtn.innerHTML = `<span class="like-icon" style="pointer-events: none;">❤️</span> <span class="like-count" style="pointer-events: none;">0</span>`;
   likeBtn.dataset.chainIndex = currentChainIndex;
   likeBtn.dataset.entryIndex = index;
-  likeBtn.style.cssText = "margin-top: 5px; padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px;";
+  likeBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
 
-  likeBtn.addEventListener("click", () => {
+  likeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const chainIdx = parseInt(likeBtn.dataset.chainIndex);
     const entryIdx = parseInt(likeBtn.dataset.entryIndex);
+    console.log("하트 버튼 클릭:", chainIdx, entryIdx); // 디버깅용
     socket.emit("sentence:like", { chainIndex: chainIdx, entryIndex: entryIdx });
   });
 
   // 화남 버튼 추가
   const angryBtn = document.createElement("button");
+  angryBtn.type = "button";
   angryBtn.className = "angry-btn";
-  angryBtn.innerHTML = `<span class="angry-icon">😡</span> <span class="angry-count">0</span>`;
+  angryBtn.disabled = false;
+  angryBtn.innerHTML = `<span class="angry-icon" style="pointer-events: none;">😡</span> <span class="angry-count" style="pointer-events: none;">0</span>`;
   angryBtn.dataset.chainIndex = currentChainIndex;
   angryBtn.dataset.entryIndex = index;
-  angryBtn.style.cssText = "margin-top: 5px; margin-left: 5px; padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px;";
+  angryBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
 
-  angryBtn.addEventListener("click", () => {
-    const chainIdx = parseInt(angryBtn.dataset.chainIndex);
-    const entryIdx = parseInt(angryBtn.dataset.entryIndex);
-    socket.emit("sentence:angry", { chainIndex: chainIdx, entryIndex: entryIdx });
+  angryBtn.addEventListener("mouseenter", () => {
+    console.log("🖱️ 화남 버튼에 마우스 올림");
   });
 
-  // 버튼 컨테이너
-  const btnContainer = document.createElement("div");
-  btnContainer.style.cssText = "display: flex; align-items: center;";
-  btnContainer.appendChild(likeBtn);
-  btnContainer.appendChild(angryBtn);
+  angryBtn.addEventListener("mouseleave", () => {
+    console.log("🖱️ 화남 버튼에서 마우스 벗어남");
+  });
+
+  angryBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const chainIdx = parseInt(angryBtn.dataset.chainIndex);
+    const entryIdx = parseInt(angryBtn.dataset.entryIndex);
+    console.log("========================================");
+    console.log("😡 화남 버튼 클릭!");
+    console.log("chainIndex:", chainIdx, "entryIndex:", entryIdx);
+    console.log("버튼 요소:", angryBtn);
+    console.log("현재 화남 수:", angryBtn.querySelector('.angry-count')?.textContent);
+    console.log("📤 서버로 sentence:angry 이벤트 전송 중...");
+    console.log("========================================");
+
+    socket.emit("sentence:angry", { chainIndex: chainIdx, entryIndex: entryIdx }, (response) => {
+      console.log("========================================");
+      console.log("📥 서버 응답 받음:");
+      console.log("response:", response);
+      if (response && response.ok) {
+        console.log("✅ 성공! angryCount:", response.angryCount, "totalPlayers:", response.totalPlayers);
+
+        // 즉시 UI 업데이트 (서버 브로드캐스트 기다리지 않고)
+        const angryCountSpan = angryBtn.querySelector('.angry-count');
+        if (angryCountSpan) {
+          angryCountSpan.textContent = response.angryCount;
+          console.log("✨ UI 업데이트 완료:", response.angryCount);
+        }
+
+        // 배경색 변경 (클릭했음을 표시)
+        angryBtn.style.background = "rgba(139, 69, 19, 0.3)";
+        angryBtn.style.borderColor = "rgba(139, 69, 19, 0.6)";
+
+        // 과반수 체크
+        if (response.angryCount > response.totalPlayers / 2) {
+          console.log("💩 과반수 달성! 똥 폭죽!");
+          const bubbleDiv = angryBtn.closest(".chat-content")?.querySelector(".chat-bubble");
+          if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+            bubbleDiv.classList.add("poop-fireworks-shown");
+            showPoopFireworks(bubbleDiv);
+          }
+        }
+      } else if (response && !response.ok) {
+        console.error("❌ 서버 에러:", response.error);
+      }
+      console.log("========================================");
+    });
+  });
+
+  reactionContainer.appendChild(likeBtn);
+  reactionContainer.appendChild(angryBtn);
 
   contentDiv.appendChild(writerDiv);
   contentDiv.appendChild(bubbleDiv);
-  contentDiv.appendChild(btnContainer);
+  contentDiv.appendChild(reactionContainer);
 
   messageDiv.appendChild(avatarDiv);
   messageDiv.appendChild(contentDiv);
@@ -1983,6 +2083,10 @@ function updateResultButtons() {
   const isFirstStory = currentChainIndex === 0;
   const isLastStory = currentChainIndex === chains.length - 1;
   const isHost = isResultHost();
+
+  if (screenResults) {
+    screenResults.classList.toggle("results-host", isHost);
+  }
 
   // 이전/다음 버튼은 방장만 표시, TTS 중에도 항상 활성화
   if (btnPrev) {
@@ -2193,33 +2297,32 @@ socket.on("story:round", (payload) => {
   const currentRound = payload.round ?? 0;
   const totalRounds = payload.totalRounds ?? 0;
 
+  const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
+
   // 라운드에 따라 배경 이미지 설정
   const notebookPanel = document.querySelector('.notebook-panel');
   if (notebookPanel) {
     if (currentRound === 0) {
       notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_round_01.png')";
+    } else if (isLastRound) {
+      notebookPanel.style.backgroundImage = "url('./image/05_엔딩/Note_Asset_Final_Round.png')";
     } else {
       notebookPanel.style.backgroundImage = "url('./image/04_스토리 적기/Note_Asset_Normal.png')";
     }
   }
 
-  const isLastRound = totalRounds > 0 && (currentRound + 1 === totalRounds);
-
   // 라운드 표기 UI
-
-  if (isLastRound) {
-    if (roundLabel) roundLabel.textContent = "마지막 라운드";
-  } else {
-    if (roundLabel) {
-      // 원래 형식으로 되돌리기 (HTML에 span이 있으니 innerHTML로 복구)
-      roundLabel.innerHTML = `라운드 <span id="display-round"></span> / <span id="display-total-rounds"></span>`;
-    }
-    // 복구 후 다시 잡기
-    const dr = document.getElementById("display-round");
-    const dt = document.getElementById("display-total-rounds");
-    if (dr) dr.textContent = String(currentRound + 1);
-    if (dt) dt.textContent = String(totalRounds);
+  if (roundLabel) {
+    roundLabel.innerHTML =
+      `라운드 <span id="display-round"></span> / <span id="display-total-rounds"></span>`;
   }
+
+  const dr = document.getElementById("display-round");
+  const dt = document.getElementById("display-total-rounds");
+
+  if (dr) dr.textContent = String(currentRound + 1);
+  if (dt) dt.textContent = String(totalRounds);
+
 
   // 혹시 다른 곳에서 displayRound/displayTotalRounds를 계속 쓰고 있으면 유지
   if (!isLastRound) {
@@ -2269,7 +2372,7 @@ socket.on("prompt:timer", ({ secondsLeft }) => {
   if (displayPromptTimer) {
     displayPromptTimer.textContent = `${secondsLeft}s`;
     // 색상 통일
-    displayPromptTimer.style.color = "#1e293b";
+    displayPromptTimer.style.color = "#f8fafc";
   }
 
   // 5초 전 알림음 (한 번만 재생)
@@ -2430,15 +2533,32 @@ socket.on("sentence:likeUpdated", ({ chainIndex, entryIndex, likeCount, totalPla
 
 // 문장 화남 업데이트
 socket.on("sentence:angryUpdated", ({ chainIndex, entryIndex, angryCount, totalPlayers, angriedBy }) => {
-  const angryBtn = document.querySelector(`button.angry-btn[data-chain-index="${chainIndex}"][data-entry-index="${entryIndex}"]`);
-  if (!angryBtn) return;
+  console.log("🔴 화남 업데이트 수신:", { chainIndex, entryIndex, angryCount, totalPlayers, angriedBy });
 
-  const angryCountSpan = angryBtn.querySelector(".angry-count");
-  if (angryCountSpan) {
-    angryCountSpan.textContent = angryCount;
+  // 해당 문장의 화남 버튼 찾기
+  const angryBtn = document.querySelector(`button.angry-btn[data-chain-index="${chainIndex}"][data-entry-index="${entryIndex}"]`);
+
+  if (!angryBtn) {
+    console.error("❌ 화남 버튼을 찾을 수 없음:", { chainIndex, entryIndex });
+    console.log("현재 존재하는 화남 버튼들:", document.querySelectorAll('.angry-btn'));
+    return;
   }
 
+  console.log("✅ 화남 버튼 찾음:", angryBtn);
+
+  // 화남 수 업데이트
+  const angryCountSpan = angryBtn.querySelector(".angry-count");
+  if (angryCountSpan) {
+    console.log(`📊 화남 수 업데이트: ${angryCountSpan.textContent} → ${angryCount}`);
+    angryCountSpan.textContent = angryCount;
+  } else {
+    console.error("❌ angry-count span을 찾을 수 없음");
+  }
+
+  // 내가 화남 했는지 확인
   const iAngried = angriedBy.includes(socket.id);
+  console.log("😡 내가 화남 했나?", iAngried, "/ 내 ID:", socket.id);
+
   if (iAngried) {
     angryBtn.style.background = "rgba(255, 80, 50, 0.3)";
     angryBtn.style.borderColor = "rgba(255, 80, 50, 0.6)";
@@ -2449,11 +2569,17 @@ socket.on("sentence:angryUpdated", ({ chainIndex, entryIndex, angryCount, totalP
 
   // 과반수 이상 화남 시 💩 폭죽 효과
   if (angryCount > totalPlayers / 2) {
+    console.log("💩 과반수 화남! 똥 폭죽 발동:", angryCount, ">", totalPlayers / 2);
+    // 이전에 똥 폭죽을 표시하지 않았으면 표시
     const bubbleDiv = angryBtn.closest(".chat-content")?.querySelector(".chat-bubble");
     if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
       bubbleDiv.classList.add("poop-fireworks-shown");
       showPoopFireworks(bubbleDiv);
+    } else {
+      console.log("⚠️ 똥 폭죽 이미 표시됨 또는 bubbleDiv 없음");
     }
+  } else {
+    console.log("ℹ️ 아직 과반수 미달:", angryCount, "<=", totalPlayers / 2);
   }
 });
 
@@ -3234,7 +3360,7 @@ function applyResponsiveScale() {
 }
 
 // 초기 실행 및 리사이즈 이벤트
-applyResponsiveScale();
+window.addEventListener('load', applyResponsiveScale);
 window.addEventListener('resize', applyResponsiveScale);
 
 // ---- 초기화 ----

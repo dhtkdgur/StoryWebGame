@@ -147,11 +147,12 @@ function resetForNewGame(room) {
   room.phase = "prompt";
   ensureGame(room);
 
-  const ids = Object.keys(room.players);
+  const ids = Object.keys(room.players).filter((sid) => !room.players[sid].disconnected);
 
   room.game.round = 0;
-  room.game.turnOrder = ids.slice(); // 플레이어 순서 고정
-  room.game.totalRounds = Math.max(1, ids.length);
+  room.game.turnOrder = shuffle(ids.slice()); // 새 판마다 섞기
+  room.game.totalRounds = Math.max(1, room.game.turnOrder.length);
+
 
   room.game.promptPool = {};
   room.game.inboxPrompts = {};
@@ -212,17 +213,16 @@ function startPromptTimer(roomId) {
       const currentRoom = getRoom(roomId);
       if (!currentRoom || currentRoom.phase !== "prompt") return;
 
-      // 타임아웃 시 제출하지 않은 플레이어는 빈 키워드 자동 제출
-      const ids = Object.keys(currentRoom.players);
+      const ids = Object.keys(currentRoom.players).filter((sid) => !currentRoom.players[sid].disconnected);
       for (const sid of ids) {
         const p = currentRoom.players[sid];
         if (!p.submitted.prompts) {
-          // 빈 키워드로 자동 제출 (3개)
           p.prompts = ["기본", "단어", "제출"];
           p.submitted.prompts = true;
           currentRoom.game.promptPool[sid] = p.prompts;
         }
       }
+
 
       // 모두 제출 완료 처리
       if (allPromptsSubmitted(currentRoom)) {
@@ -1375,6 +1375,51 @@ io.on("connection", (socket) => {
       });
 
       ack?.({ ok: true, likeCount, totalPlayers });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // 화남 이모티콘 처리
+  socket.on("sentence:angry", ({ chainIndex, entryIndex }, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+      const player = room.players[socket.id];
+      if (!player) return ack?.({ ok: false, error: "PLAYER_NOT_FOUND" });
+
+      // 결과 화면에서만 사용 가능
+      if (room.phase !== "result") return ack?.({ ok: false, error: "NOT_RESULT_PHASE" });
+
+      // 화남 데이터 초기화
+      if (!room.sentenceAngrys) room.sentenceAngrys = {};
+      const angryKey = `${chainIndex}_${entryIndex}`;
+      if (!room.sentenceAngrys[angryKey]) room.sentenceAngrys[angryKey] = new Set();
+
+      // 토글 방식: 이미 화남 했으면 취소, 아니면 추가
+      if (room.sentenceAngrys[angryKey].has(socket.id)) {
+        room.sentenceAngrys[angryKey].delete(socket.id);
+      } else {
+        room.sentenceAngrys[angryKey].add(socket.id);
+      }
+
+      // 화남 수 계산
+      const angryCount = room.sentenceAngrys[angryKey].size;
+      const totalPlayers = Object.keys(room.players).filter(pid => !room.players[pid].disconnected).length;
+
+      // 모든 플레이어에게 화남 상태 브로드캐스트
+      io.to(rid).emit("sentence:angryUpdated", {
+        chainIndex,
+        entryIndex,
+        angryCount,
+        totalPlayers,
+        angriedBy: Array.from(room.sentenceAngrys[angryKey])
+      });
+
+      ack?.({ ok: true, angryCount, totalPlayers });
     } catch (e) {
       console.error(e);
       ack?.({ ok: false, error: "SERVER_ERROR" });
