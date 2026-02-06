@@ -1693,6 +1693,87 @@ function showFireworks(element) {
   }
 }
 
+// 똥 폭죽 효과 표시
+function showPoopFireworks(element) {
+  const poopColors = ["#8B4513", "#654321", "#4A2C1A", "#3E2723", "#5D4037"];
+
+  // 똥 색깔 파티클 생성
+  for (let i = 0; i < 20; i++) {
+    const particle = document.createElement("div");
+    particle.style.cssText = `
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: ${poopColors[Math.floor(Math.random() * poopColors.length)]};
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1000;
+    `;
+
+    const rect = element.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    const startY = rect.top + rect.height / 2;
+
+    particle.style.left = startX + "px";
+    particle.style.top = startY + "px";
+
+    document.body.appendChild(particle);
+
+    // 랜덤 방향으로 애니메이션
+    const angle = (Math.PI * 2 * i) / 20;
+    const distance = 50 + Math.random() * 50;
+    const endX = startX + Math.cos(angle) * distance;
+    const endY = startY + Math.sin(angle) * distance;
+
+    particle.animate(
+      [
+        { transform: "translate(0, 0) scale(1)", opacity: 1 },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0)`, opacity: 0 }
+      ],
+      {
+        duration: 800,
+        easing: "cubic-bezier(0, 0.5, 0.5, 1)"
+      }
+    ).onfinish = () => {
+      particle.remove();
+    };
+  }
+
+  // 똥 이모지 폭죽 효과
+  const poopEmojis = ["💩", "💩", "💩", "🤢", "😡"];
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      const emoji = document.createElement("div");
+      emoji.textContent = poopEmojis[Math.floor(Math.random() * poopEmojis.length)];
+      emoji.style.cssText = `
+        position: absolute;
+        font-size: 24px;
+        pointer-events: none;
+        z-index: 1001;
+      `;
+
+      const rect = element.getBoundingClientRect();
+      emoji.style.left = rect.left + Math.random() * rect.width + "px";
+      emoji.style.top = rect.top + "px";
+
+      document.body.appendChild(emoji);
+
+      emoji.animate(
+        [
+          { transform: "translateY(0) scale(1)", opacity: 1 },
+          { transform: "translateY(-100px) scale(1.5)", opacity: 0 }
+        ],
+        {
+          duration: 1000,
+          easing: "ease-out"
+        }
+      ).onfinish = () => {
+        emoji.remove();
+      };
+    }, i * 100);
+  }
+}
+
 
 function renderStorySoFar(entries, round) {
   if (!storySoFar) return;
@@ -1928,23 +2009,100 @@ function showNextChatMessage(entries, index) {
   bubbleDiv.className = "chat-bubble";
   bubbleDiv.innerHTML = highlightKeywords(entry.text || "", entry.usedKeywords || []);
 
+  // 리액션 버튼 컨테이너
+  const reactionContainer = document.createElement("div");
+  reactionContainer.style.cssText = "display: flex; gap: 10px; margin-top: 5px; pointer-events: auto !important; position: relative; z-index: 999 !important;";
+
   // 좋아요 버튼 추가
   const likeBtn = document.createElement("button");
+  likeBtn.type = "button";
   likeBtn.className = "like-btn";
-  likeBtn.innerHTML = `<span class="like-icon">❤️</span> <span class="like-count">0</span>`;
+  likeBtn.disabled = false;
+  likeBtn.innerHTML = `<span class="like-icon" style="pointer-events: none;">❤️</span> <span class="like-count" style="pointer-events: none;">0</span>`;
   likeBtn.dataset.chainIndex = currentChainIndex;
   likeBtn.dataset.entryIndex = index;
-  likeBtn.style.cssText = "margin-top: 5px; padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px;";
+  likeBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
 
-  likeBtn.addEventListener("click", () => {
+  likeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const chainIdx = parseInt(likeBtn.dataset.chainIndex);
     const entryIdx = parseInt(likeBtn.dataset.entryIndex);
+    console.log("하트 버튼 클릭:", chainIdx, entryIdx); // 디버깅용
     socket.emit("sentence:like", { chainIndex: chainIdx, entryIndex: entryIdx });
   });
 
+  // 화남 버튼 추가
+  const angryBtn = document.createElement("button");
+  angryBtn.type = "button";
+  angryBtn.className = "angry-btn";
+  angryBtn.disabled = false;
+  angryBtn.innerHTML = `<span class="angry-icon" style="pointer-events: none;">😡</span> <span class="angry-count" style="pointer-events: none;">0</span>`;
+  angryBtn.dataset.chainIndex = currentChainIndex;
+  angryBtn.dataset.entryIndex = index;
+  angryBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
+
+  angryBtn.addEventListener("mouseenter", () => {
+    console.log("🖱️ 화남 버튼에 마우스 올림");
+  });
+  
+  angryBtn.addEventListener("mouseleave", () => {
+    console.log("🖱️ 화남 버튼에서 마우스 벗어남");
+  });
+
+  angryBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const chainIdx = parseInt(angryBtn.dataset.chainIndex);
+    const entryIdx = parseInt(angryBtn.dataset.entryIndex);
+    console.log("========================================");
+    console.log("😡 화남 버튼 클릭!");
+    console.log("chainIndex:", chainIdx, "entryIndex:", entryIdx);
+    console.log("버튼 요소:", angryBtn);
+    console.log("현재 화남 수:", angryBtn.querySelector('.angry-count')?.textContent);
+    console.log("📤 서버로 sentence:angry 이벤트 전송 중...");
+    console.log("========================================");
+    
+    socket.emit("sentence:angry", { chainIndex: chainIdx, entryIndex: entryIdx }, (response) => {
+      console.log("========================================");
+      console.log("📥 서버 응답 받음:");
+      console.log("response:", response);
+      if (response && response.ok) {
+        console.log("✅ 성공! angryCount:", response.angryCount, "totalPlayers:", response.totalPlayers);
+        
+        // 🔥 즉시 UI 업데이트 (서버 브로드캐스트 기다리지 않고)
+        const angryCountSpan = angryBtn.querySelector('.angry-count');
+        if (angryCountSpan) {
+          angryCountSpan.textContent = response.angryCount;
+          console.log("✨ UI 업데이트 완료:", response.angryCount);
+        }
+        
+        // 배경색 변경 (클릭했음을 표시)
+        angryBtn.style.background = "rgba(139, 69, 19, 0.3)";
+        angryBtn.style.borderColor = "rgba(139, 69, 19, 0.6)";
+        
+        // 과반수 체크
+        if (response.angryCount > response.totalPlayers / 2) {
+          console.log("💩 과반수 달성! 똥 폭죽!");
+          const bubbleDiv = angryBtn.parentElement.previousElementSibling;
+          if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+            bubbleDiv.classList.add("poop-fireworks-shown");
+            showPoopFireworks(bubbleDiv);
+          }
+        }
+      } else if (response && !response.ok) {
+        console.error("❌ 서버 에러:", response.error);
+      }
+      console.log("========================================");
+    });
+  });
+
+  reactionContainer.appendChild(likeBtn);
+  reactionContainer.appendChild(angryBtn);
+
   contentDiv.appendChild(writerDiv);
   contentDiv.appendChild(bubbleDiv);
-  contentDiv.appendChild(likeBtn);
+  contentDiv.appendChild(reactionContainer);
 
   messageDiv.appendChild(avatarDiv);
   messageDiv.appendChild(contentDiv);
@@ -2428,11 +2586,63 @@ socket.on("sentence:likeUpdated", ({ chainIndex, entryIndex, likeCount, totalPla
   // 과반수 이상 좋아요 시 폭죽 효과
   if (likeCount > totalPlayers / 2) {
     // 이전에 폭죽을 표시하지 않았으면 표시
-    const bubbleDiv = likeBtn.previousElementSibling;
+    const bubbleDiv = likeBtn.parentElement.previousElementSibling;
     if (bubbleDiv && !bubbleDiv.classList.contains("fireworks-shown")) {
       bubbleDiv.classList.add("fireworks-shown");
       showFireworks(bubbleDiv);
     }
+  }
+});
+
+// 문장 화남 업데이트
+socket.on("sentence:angryUpdated", ({ chainIndex, entryIndex, angryCount, totalPlayers, angriedBy }) => {
+  console.log("🔴 화남 업데이트 수신:", { chainIndex, entryIndex, angryCount, totalPlayers, angriedBy });
+  
+  // 해당 문장의 화남 버튼 찾기
+  const angryBtn = document.querySelector(`button.angry-btn[data-chain-index="${chainIndex}"][data-entry-index="${entryIndex}"]`);
+  
+  if (!angryBtn) {
+    console.error("❌ 화남 버튼을 찾을 수 없음:", { chainIndex, entryIndex });
+    console.log("현재 존재하는 화남 버튼들:", document.querySelectorAll('.angry-btn'));
+    return;
+  }
+  
+  console.log("✅ 화남 버튼 찾음:", angryBtn);
+
+  // 화남 수 업데이트
+  const angryCountSpan = angryBtn.querySelector(".angry-count");
+  if (angryCountSpan) {
+    console.log(`📊 화남 수 업데이트: ${angryCountSpan.textContent} → ${angryCount}`);
+    angryCountSpan.textContent = angryCount;
+  } else {
+    console.error("❌ angry-count span을 찾을 수 없음");
+  }
+
+  // 내가 화남 했는지 확인
+  const iAngried = angriedBy.includes(socket.id);
+  console.log("😡 내가 화남 했나?", iAngried, "/ 내 ID:", socket.id);
+  
+  if (iAngried) {
+    angryBtn.style.background = "rgba(139, 69, 19, 0.3)";
+    angryBtn.style.borderColor = "rgba(139, 69, 19, 0.6)";
+  } else {
+    angryBtn.style.background = "rgba(255,255,255,0.1)";
+    angryBtn.style.borderColor = "rgba(255,255,255,0.3)";
+  }
+
+  // 과반수 이상 화남 시 똥 폭죽 효과
+  if (angryCount > totalPlayers / 2) {
+    console.log("💩 과반수 화남! 똥 폭죽 발동:", angryCount, ">", totalPlayers / 2);
+    // 이전에 똥 폭죽을 표시하지 않았으면 표시
+    const bubbleDiv = angryBtn.parentElement.previousElementSibling;
+    if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+      bubbleDiv.classList.add("poop-fireworks-shown");
+      showPoopFireworks(bubbleDiv);
+    } else {
+      console.log("⚠️ 똥 폭죽 이미 표시됨 또는 bubbleDiv 없음");
+    }
+  } else {
+    console.log("ℹ️ 아직 과반수 미달:", angryCount, "≤", totalPlayers / 2);
   }
 });
 

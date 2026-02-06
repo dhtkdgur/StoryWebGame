@@ -1381,6 +1381,51 @@ io.on("connection", (socket) => {
     }
   });
 
+  // 화남 이모티콘 처리
+  socket.on("sentence:angry", ({ chainIndex, entryIndex }, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+      const player = room.players[socket.id];
+      if (!player) return ack?.({ ok: false, error: "PLAYER_NOT_FOUND" });
+
+      // 결과 화면에서만 사용 가능
+      if (room.phase !== "result") return ack?.({ ok: false, error: "NOT_RESULT_PHASE" });
+
+      // 화남 데이터 초기화
+      if (!room.sentenceAngrys) room.sentenceAngrys = {};
+      const angryKey = `${chainIndex}_${entryIndex}`;
+      if (!room.sentenceAngrys[angryKey]) room.sentenceAngrys[angryKey] = new Set();
+
+      // 토글 방식: 이미 화남 했으면 취소, 아니면 추가
+      if (room.sentenceAngrys[angryKey].has(socket.id)) {
+        room.sentenceAngrys[angryKey].delete(socket.id);
+      } else {
+        room.sentenceAngrys[angryKey].add(socket.id);
+      }
+
+      // 화남 수 계산
+      const angryCount = room.sentenceAngrys[angryKey].size;
+      const totalPlayers = Object.keys(room.players).filter(pid => !room.players[pid].disconnected).length;
+
+      // 모든 플레이어에게 화남 상태 브로드캐스트
+      io.to(rid).emit("sentence:angryUpdated", {
+        chainIndex,
+        entryIndex,
+        angryCount,
+        totalPlayers,
+        angriedBy: Array.from(room.sentenceAngrys[angryKey])
+      });
+
+      ack?.({ ok: true, angryCount, totalPlayers });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
   // ------------------------------------------------------------
   // 결과 화면 이모티콘 전송 (따봉/박수 애니메이션)
   socket.on("result:emoji", ({ emojiType, emojiId, emojiContent }, ack) => {

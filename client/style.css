@@ -1341,7 +1341,6 @@ button:disabled {
 #screen-results #btn-restart {
   margin-top: 0px;
   background: transparent !important;
-  padding: 5px !important;
 }
 
 #screen-results #btn-screenshot {
@@ -2567,4 +2566,52 @@ button:disabled {
   display: flex;
   flex-direction: column;
   padding: 10px;
+}
+/* 리액션 버튼 스타일 */
+.like-btn, .angry-btn {
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 14px;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1000 !important; /* z-index를 크게 높임 */
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.like-btn:hover, .angry-btn:hover {
+  transform: scale(1.05);
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.5);
+  z-index: 1001 !important; /* 호버 시 더 높임 */
+}
+
+.like-btn:active, .angry-btn:active {
+  transform: scale(0.95);
+  z-index: 1002 !important; /* 클릭 시 최상위 */
+}
+
+.like-btn:disabled, .angry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.like-icon, .angry-icon {
+  font-size: 16px;
+  display: inline-block;
+  pointer-events: none !important;
+}
+
+.like-count, .angry-count {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 15px;
+  text-align: center;
+  pointer-events: none !important;
 }
