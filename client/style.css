@@ -1058,7 +1058,7 @@ button:disabled {
 
 #screen-results .results-left-panel {
   position: absolute;
-  left: 530px;
+  left: 480px;
   top: 30px;
   width: auto;
   height: auto;
@@ -1158,7 +1158,7 @@ button:disabled {
   padding: 0;
   margin: 0;
   font-family: 'NostalgicMongtori', cursive;
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: normal;
   color: #2F3569;
 }
@@ -1446,7 +1446,7 @@ button:disabled {
   font-family: 'NostalgicMongtori', cursive; 
   font-weight: bold;
   color: #1e293b;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   margin-bottom: 20px;
   padding: 0 10px;
 }

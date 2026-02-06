@@ -1114,15 +1114,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     else if (promptsPlayersLeft?.contains(playerDiv)) parentSidebar = promptsPlayersLeft;
     else parentSidebar = promptsPlayersRight;
 
+    // 현재 화면 컨테이너 찾기 (스케일이 적용되는 #app 내부)
+    let currentScreen = null;
+    if (isPromptsScreen && screenPrompts) currentScreen = screenPrompts;
+    else if (isStoryScreen && screenStory) currentScreen = screenStory;
+    
+    // 화면을 찾지 못한 경우 fallback
+    if (!currentScreen) {
+      currentScreen = document.querySelector('.screen:not(.hidden)') || document.body;
+    }
+
     // 플레이어 위치 가져오기
     const playerRect = playerDiv.getBoundingClientRect();
-    const sidebarRect = parentSidebar.getBoundingClientRect();
+    const screenRect = currentScreen.getBoundingClientRect();
 
     // 이모티콘 엘리먼트 생성
     const emojiEl = document.createElement("div");
     emojiEl.className = "player-emoji-floating";
-    emojiEl.style.position = "absolute";
-    emojiEl.style.zIndex = "100";
+    emojiEl.style.position = "absolute"; // fixed → absolute로 변경 (화면 내 상대 위치)
+    emojiEl.style.zIndex = "9999"; // z-index를 매우 높게 설정
     emojiEl.style.pointerEvents = "none";
 
     if (emoji.type === "image") {
@@ -1151,25 +1161,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     const randomOffsetY = (Math.random() - 0.5) * 100; // -50px ~ +50px
     const randomRotation = (Math.random() - 0.5) * 60; // -30deg ~ +30deg
 
-    // 사이드바 기준 위치 계산
-    const relativeTop = playerRect.top - sidebarRect.top + playerRect.height / 2 + randomOffsetY;
+    // 화면 컨테이너 기준 위치 계산
+    const relativeTop = playerRect.top - screenRect.top + playerRect.height / 2 + randomOffsetY;
     let relativeLeft;
 
     if (isLeftSide) {
       // 왼쪽 사이드바: 프로필 오른쪽에 표시 (바깥쪽으로)
-      relativeLeft = playerRect.width + 20 + randomOffsetX;
+      relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
     } else {
       // 오른쪽 사이드바: 3열/4열 구분
-      // 사이드바 중앙을 기준으로 플레이어 위치 판단
-      const sidebarCenterX = sidebarRect.width / 2;
-      const playerCenterX = playerRect.left - sidebarRect.left + playerRect.width / 2;
+      const sidebarRect = parentSidebar.getBoundingClientRect();
+      const sidebarCenterX = sidebarRect.left + sidebarRect.width / 2;
+      const playerCenterX = playerRect.left + playerRect.width / 2;
       
       if (playerCenterX < sidebarCenterX) {
         // 3열(안쪽): 프로필 왼쪽에 표시
-        relativeLeft = -60 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left - 60 + randomOffsetX;
       } else {
         // 4열(바깥쪽): 프로필 오른쪽에 표시 (프로필을 가리지 않을 정도로)
-        relativeLeft = playerRect.width + 120 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
       }
     }
 
@@ -1177,16 +1187,15 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     emojiEl.style.left = relativeLeft + "px";
     emojiEl.style.transform = `rotate(${randomRotation}deg)`;
 
-    // 사이드바에 추가 (position이 static일 때만 relative로 변경)
-    if (getComputedStyle(parentSidebar).position === "static") {
-      parentSidebar.style.position = "relative";
+    // 현재 화면에 추가하여 스케일 적용을 받도록 함
+    if (getComputedStyle(currentScreen).position === "static") {
+      currentScreen.style.position = "relative";
     }
-    parentSidebar.appendChild(emojiEl);
+    currentScreen.appendChild(emojiEl);
     console.log("📍 이모티콘 추가됨:", {
-      parentSidebar: parentSidebar.id,
+      currentScreen: currentScreen.id || currentScreen.className,
       top: relativeTop,
       left: relativeLeft,
-      sidebarOverflow: getComputedStyle(parentSidebar).overflow,
       emojiEl: emojiEl
     });
 
