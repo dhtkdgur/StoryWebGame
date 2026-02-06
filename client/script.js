@@ -1481,12 +1481,15 @@ if (window.speechSynthesis) {
 }
 
 // TTS 취소 함수
-let ttsQueue = []; // TTS 큐
-let isSpeaking = false; // 현재 발화 중인지
+let ttsQueue = [];
+let ttsResumeInterval = null;
 
 function cancelTTS() {
-  ttsQueue = []; // 큐 비우기
-  isSpeaking = false;
+  ttsQueue = [];
+  if (ttsResumeInterval) {
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
+  }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -1496,123 +1499,75 @@ function stopTTS() {
   cancelTTS();
 }
 
-// 텍스트를 문장 단위로 분리
-function splitTextIntoSentences(text) {
-  if (!text) return [];
-  
-  // 문장 구분 (마침표, 물음표, 느낌표, 줄바꿈 기준)
-  // 단, 너무 짧은 조각은 합치기
-  const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
-  const sentences = [];
-  let buffer = "";
-  
-  for (const sentence of rawSentences) {
-    const trimmed = sentence.trim();
-    if (!trimmed) continue;
-    
-    buffer += (buffer ? " " : "") + trimmed;
-    
-    // 버퍼가 충분히 길거나 문장 끝이면 추가
-    if (buffer.length >= 30 || /[.!?。！？]$/.test(buffer)) {
-      sentences.push(buffer);
-      buffer = "";
-    }
-  }
-  
-  // 남은 버퍼 추가
-  if (buffer.trim()) {
-    sentences.push(buffer.trim());
-  }
-  
-  // 문장이 없으면 전체 텍스트를 하나의 문장으로
-  if (sentences.length === 0 && text.trim()) {
-    sentences.push(text.trim());
-  }
-  
-  return sentences;
-}
-
 // 큐에서 다음 문장 읽기
-function processNextInQueue(finalCallback) {
-  if (ttsQueue.length === 0) {
-    isSpeaking = false;
-    if (finalCallback) finalCallback();
-    return;
-  }
-  
-  isSpeaking = true;
+function processNextInQueue() {
+  if (ttsQueue.length === 0) return;
+
   const sentence = ttsQueue.shift();
-  
-  // 음성 발화 객체 생성
   const utterance = new SpeechSynthesisUtterance(sentence);
   utterance.lang = 'ko-KR';
   utterance.rate = 1.0;
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
-  
+
   if (koreanVoice) {
     utterance.voice = koreanVoice;
   }
-  
+
   // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
-  // 주기적으로 resume 호출
-  const resumeInterval = setInterval(() => {
+  if (ttsResumeInterval) clearInterval(ttsResumeInterval);
+  ttsResumeInterval = setInterval(() => {
     if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
     }
   }, 5000);
-  
-  // 발화 완료 시 다음 문장 처리
+
   utterance.onend = () => {
-    clearInterval(resumeInterval);
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
+    setTimeout(() => processNextInQueue(), 100);
   };
-  
-  // 오류 처리
+
   utterance.onerror = (e) => {
-    clearInterval(resumeInterval);
-    // interrupted는 cancel 호출 시 발생 - 무시
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
     if (e.error !== "interrupted") {
       console.error("TTS 오류:", e.error);
     }
-    // 오류 발생해도 다음 문장 시도
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
+    setTimeout(() => processNextInQueue(), 100);
   };
-  
+
   window.speechSynthesis.speak(utterance);
 }
 
-// 텍스트 읽기 함수 (긴 텍스트도 안정적으로 처리)
-function speakText(text, onEndCallback) {
-  // TTS 비활성화 또는 텍스트 없으면 바로 콜백 호출
-  if (!ttsEnabled || !text) {
-    if (onEndCallback) onEndCallback();
-    return;
-  }
-
-  // Web Speech API 지원 확인
-  if (!window.speechSynthesis) {
-    console.warn("Web Speech API를 지원하지 않는 브라우저입니다.");
-    if (onEndCallback) onEndCallback();
-    return;
-  }
+// 텍스트 읽기 함수 (메시지 진행과 독립적으로 동작)
+function speakText(text) {
+  if (!ttsEnabled || !text) return;
+  if (!window.speechSynthesis) return;
 
   // 이전 TTS 중지
   cancelTTS();
-  
-  // 텍스트를 문장 단위로 분리하여 큐에 추가
-  const sentences = splitTextIntoSentences(text);
-  ttsQueue = [...sentences];
-  
-  console.log("TTS 시작, 문장 수:", sentences.length);
-  
-  // 큐 처리 시작
-  processNextInQueue(onEndCallback);
+
+  // 텍스트를 문장 단위로 분리 (Chrome 긴 발화 끊김 방지)
+  const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
+  const sentences = [];
+  let buffer = "";
+
+  for (const s of rawSentences) {
+    const trimmed = s.trim();
+    if (!trimmed) continue;
+    buffer += (buffer ? " " : "") + trimmed;
+    if (buffer.length >= 30 || /[.!?。！？]$/.test(buffer)) {
+      sentences.push(buffer);
+      buffer = "";
+    }
+  }
+  if (buffer.trim()) sentences.push(buffer.trim());
+  if (sentences.length === 0 && text.trim()) sentences.push(text.trim());
+
+  ttsQueue = sentences;
+  processNextInQueue();
 }
 
 // 폭죽 효과 표시
@@ -1667,6 +1622,84 @@ function showFireworks(element) {
     setTimeout(() => {
       const emoji = document.createElement("div");
       emoji.textContent = emojiFireworks[Math.floor(Math.random() * emojiFireworks.length)];
+      emoji.style.cssText = `
+        position: absolute;
+        font-size: 24px;
+        pointer-events: none;
+        z-index: 1001;
+      `;
+
+      const rect = element.getBoundingClientRect();
+      emoji.style.left = rect.left + Math.random() * rect.width + "px";
+      emoji.style.top = rect.top + "px";
+
+      document.body.appendChild(emoji);
+
+      emoji.animate(
+        [
+          { transform: "translateY(0) scale(1)", opacity: 1 },
+          { transform: "translateY(-100px) scale(1.5)", opacity: 0 }
+        ],
+        {
+          duration: 1000,
+          easing: "ease-out"
+        }
+      ).onfinish = () => {
+        emoji.remove();
+      };
+    }, i * 100);
+  }
+}
+
+// 💩 폭죽 효과 표시 (화남 과반수)
+function showPoopFireworks(element) {
+  const poopColors = ["#8B4513", "#A0522D", "#6B3410", "#D2691E", "#CD853F"];
+
+  for (let i = 0; i < 20; i++) {
+    const particle = document.createElement("div");
+    particle.style.cssText = `
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: ${poopColors[Math.floor(Math.random() * poopColors.length)]};
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1000;
+    `;
+
+    const rect = element.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    const startY = rect.top + rect.height / 2;
+
+    particle.style.left = startX + "px";
+    particle.style.top = startY + "px";
+
+    document.body.appendChild(particle);
+
+    const angle = (Math.PI * 2 * i) / 20;
+    const distance = 50 + Math.random() * 50;
+    const endX = startX + Math.cos(angle) * distance;
+    const endY = startY + Math.sin(angle) * distance;
+
+    particle.animate(
+      [
+        { transform: "translate(0, 0) scale(1)", opacity: 1 },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0)`, opacity: 0 }
+      ],
+      {
+        duration: 800,
+        easing: "cubic-bezier(0, 0.5, 0.5, 1)"
+      }
+    ).onfinish = () => {
+      particle.remove();
+    };
+  }
+
+  const poopEmojis = ["💩", "💩", "💩", "😡", "🤬"];
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      const emoji = document.createElement("div");
+      emoji.textContent = poopEmojis[Math.floor(Math.random() * poopEmojis.length)];
       emoji.style.cssText = `
         position: absolute;
         font-size: 24px;
@@ -1820,10 +1853,10 @@ function displayStory(chainIndex) {
     chatContainer.innerHTML = "";
   }
 
-  // 버튼 상태 업데이트 (애니메이션 중에는 비활성화)
-  updateResultButtons(true);
+  // 버튼 상태 업데이트 (항상 활성화)
+  updateResultButtons();
 
-  // 제목 TTS 먼저 (에러 핸들링)
+  // 제목 TTS (에러 핸들링)
   try {
     speakText(`${chain.ownerName}의 사생활`);
   } catch (e) {
@@ -1832,20 +1865,15 @@ function displayStory(chainIndex) {
 
   // 문장들을 순차적으로 표시
   if (entries.length > 0) {
-    setTimeout(() => {
+    chatAnimationTimer = setTimeout(() => {
       showNextChatMessage(entries, 0);
-    }, 1500); // 제목 TTS 후 잠시 대기
-  } else {
-    // 문장이 없으면 바로 버튼 활성화
-    updateResultButtons(false);
+    }, 1500);
   }
 }
 
 // 채팅 메시지 하나씩 표시
 function showNextChatMessage(entries, index) {
   if (index >= entries.length) {
-    // 모든 문장 표시 완료
-    updateResultButtons(false);
     return;
   }
 
@@ -1902,9 +1930,29 @@ function showNextChatMessage(entries, index) {
     socket.emit("sentence:like", { chainIndex: chainIdx, entryIndex: entryIdx });
   });
 
+  // 화남 버튼 추가
+  const angryBtn = document.createElement("button");
+  angryBtn.className = "angry-btn";
+  angryBtn.innerHTML = `<span class="angry-icon">😡</span> <span class="angry-count">0</span>`;
+  angryBtn.dataset.chainIndex = currentChainIndex;
+  angryBtn.dataset.entryIndex = index;
+  angryBtn.style.cssText = "margin-top: 5px; margin-left: 5px; padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px;";
+
+  angryBtn.addEventListener("click", () => {
+    const chainIdx = parseInt(angryBtn.dataset.chainIndex);
+    const entryIdx = parseInt(angryBtn.dataset.entryIndex);
+    socket.emit("sentence:angry", { chainIndex: chainIdx, entryIndex: entryIdx });
+  });
+
+  // 버튼 컨테이너
+  const btnContainer = document.createElement("div");
+  btnContainer.style.cssText = "display: flex; align-items: center;";
+  btnContainer.appendChild(likeBtn);
+  btnContainer.appendChild(angryBtn);
+
   contentDiv.appendChild(writerDiv);
   contentDiv.appendChild(bubbleDiv);
-  contentDiv.appendChild(likeBtn);
+  contentDiv.appendChild(btnContainer);
 
   messageDiv.appendChild(avatarDiv);
   messageDiv.appendChild(contentDiv);
@@ -1917,35 +1965,29 @@ function showNextChatMessage(entries, index) {
 
   displayedEntryCount = index + 1;
 
-  // TTS로 읽기 - 완료 후 다음 메시지로 넘어감
-  speakText(entry.text, () => {
-    // TTS 완료 후 약간의 딜레이 추가 (자연스러운 전환)
+  // TTS로 읽기 (백그라운드, 메시지 진행과 독립)
+  speakText(entry.text);
+
+  // 고정 타이머로 다음 메시지 표시 (TTS 완료를 기다리지 않음)
+  const delay = Math.max(2000, (entry.text || "").length * 80);
+  if (!isLastEntry) {
     chatAnimationTimer = setTimeout(() => {
-      if (isLastEntry) {
-        // 마지막 문장이면 버튼 활성화
-        updateResultButtons(false);
-      } else {
-        // 다음 메시지 표시
-        showNextChatMessage(entries, index + 1);
-      }
-    }, 500); // TTS 완료 후 0.5초 딜레이
-  });
+      showNextChatMessage(entries, index + 1);
+    }, delay);
+  }
 }
 
 // 버튼 상태 업데이트
-function updateResultButtons(isAnimating = false) {
+function updateResultButtons() {
   const chains = resultData?.chains || [];
   const isFirstStory = currentChainIndex === 0;
   const isLastStory = currentChainIndex === chains.length - 1;
   const isHost = isResultHost();
-  const chain = chains[currentChainIndex];
-  const entries = chain?.entries || [];
-  const allDisplayed = displayedEntryCount >= entries.length;
 
-  // 이전/다음 버튼은 방장만 표시
+  // 이전/다음 버튼은 방장만 표시, TTS 중에도 항상 활성화
   if (btnPrev) {
     if (isHost) {
-      btnPrev.disabled = isFirstStory || isAnimating;
+      btnPrev.disabled = isFirstStory;
       btnPrev.classList.remove("hidden");
     } else {
       btnPrev.classList.add("hidden");
@@ -1954,25 +1996,18 @@ function updateResultButtons(isAnimating = false) {
 
   if (btnNextStory) {
     if (isHost) {
-      // 버튼을 숨기지 않고 항상 표시, 비활성화로 처리
       btnNextStory.classList.remove("hidden");
-      if (isLastStory && allDisplayed) {
-        // 마지막 스토리에서 모든 문장 표시 완료 시 비활성화
-        btnNextStory.disabled = true;
-      } else {
-        btnNextStory.disabled = isAnimating || !allDisplayed;
-      }
+      btnNextStory.disabled = isLastStory;
     } else {
       btnNextStory.classList.add("hidden");
     }
   }
 
-  // 다시하기 버튼 (마지막 스토리에서 모든 문장 표시 완료 시 활성화, 방장만)
+  // 다시하기 버튼 (마지막 스토리일 때만 활성화, 방장만)
   if (btnRestart) {
     if (isHost) {
       btnRestart.classList.remove("hidden");
-      // 마지막 스토리에서 모든 문장 표시 완료 시에만 활성화
-      btnRestart.disabled = !(isLastStory && allDisplayed);
+      btnRestart.disabled = !isLastStory;
     } else {
       btnRestart.classList.add("hidden");
     }
@@ -2385,10 +2420,39 @@ socket.on("sentence:likeUpdated", ({ chainIndex, entryIndex, likeCount, totalPla
   // 과반수 이상 좋아요 시 폭죽 효과
   if (likeCount > totalPlayers / 2) {
     // 이전에 폭죽을 표시하지 않았으면 표시
-    const bubbleDiv = likeBtn.previousElementSibling;
+    const bubbleDiv = likeBtn.closest(".chat-content")?.querySelector(".chat-bubble");
     if (bubbleDiv && !bubbleDiv.classList.contains("fireworks-shown")) {
       bubbleDiv.classList.add("fireworks-shown");
       showFireworks(bubbleDiv);
+    }
+  }
+});
+
+// 문장 화남 업데이트
+socket.on("sentence:angryUpdated", ({ chainIndex, entryIndex, angryCount, totalPlayers, angriedBy }) => {
+  const angryBtn = document.querySelector(`button.angry-btn[data-chain-index="${chainIndex}"][data-entry-index="${entryIndex}"]`);
+  if (!angryBtn) return;
+
+  const angryCountSpan = angryBtn.querySelector(".angry-count");
+  if (angryCountSpan) {
+    angryCountSpan.textContent = angryCount;
+  }
+
+  const iAngried = angriedBy.includes(socket.id);
+  if (iAngried) {
+    angryBtn.style.background = "rgba(255, 80, 50, 0.3)";
+    angryBtn.style.borderColor = "rgba(255, 80, 50, 0.6)";
+  } else {
+    angryBtn.style.background = "rgba(255,255,255,0.1)";
+    angryBtn.style.borderColor = "rgba(255,255,255,0.3)";
+  }
+
+  // 과반수 이상 화남 시 💩 폭죽 효과
+  if (angryCount > totalPlayers / 2) {
+    const bubbleDiv = angryBtn.closest(".chat-content")?.querySelector(".chat-bubble");
+    if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+      bubbleDiv.classList.add("poop-fireworks-shown");
+      showPoopFireworks(bubbleDiv);
     }
   }
 });
@@ -3155,17 +3219,17 @@ const DESIGN_WIDTH = 1920;  // 디자인 기준 가로 해상도
 function applyResponsiveScale() {
   const app = $("app");
   if (!app) return;
-  
+
   const windowWidth = window.innerWidth;
-  
+
   // 화면 가로 크기 기준으로 스케일 계산
   const scale = windowWidth / DESIGN_WIDTH;
-  
+
   // 최소/최대 스케일 제한 (0.5 ~ 1.5)
   const clampedScale = Math.min(Math.max(scale, 0.5), 1.5);
-  
+
   app.style.transform = `scale(${clampedScale})`;
-  
+
   console.log(`Window: ${windowWidth}px, Scale: ${clampedScale.toFixed(3)}`);
 }
 

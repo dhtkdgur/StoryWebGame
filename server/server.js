@@ -1382,6 +1382,48 @@ io.on("connection", (socket) => {
   });
 
   // ------------------------------------------------------------
+  // 결과 화면 문장 화남
+  socket.on("sentence:angry", ({ chainIndex, entryIndex }, ack) => {
+    try {
+      const rid = socket.data.roomId;
+      const room = rid ? rooms[rid] : null;
+      if (!room) return ack?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+      const player = room.players[socket.id];
+      if (!player) return ack?.({ ok: false, error: "PLAYER_NOT_FOUND" });
+
+      if (room.phase !== "result") return ack?.({ ok: false, error: "NOT_RESULT_PHASE" });
+
+      if (!room.sentenceAngries) room.sentenceAngries = {};
+      const angryKey = `${chainIndex}_${entryIndex}`;
+      if (!room.sentenceAngries[angryKey]) room.sentenceAngries[angryKey] = new Set();
+
+      // 토글 방식
+      if (room.sentenceAngries[angryKey].has(socket.id)) {
+        room.sentenceAngries[angryKey].delete(socket.id);
+      } else {
+        room.sentenceAngries[angryKey].add(socket.id);
+      }
+
+      const angryCount = room.sentenceAngries[angryKey].size;
+      const totalPlayers = Object.keys(room.players).filter(pid => !room.players[pid].disconnected).length;
+
+      io.to(rid).emit("sentence:angryUpdated", {
+        chainIndex,
+        entryIndex,
+        angryCount,
+        totalPlayers,
+        angriedBy: Array.from(room.sentenceAngries[angryKey])
+      });
+
+      ack?.({ ok: true, angryCount, totalPlayers });
+    } catch (e) {
+      console.error(e);
+      ack?.({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
+  // ------------------------------------------------------------
   // 결과 화면 이모티콘 전송 (따봉/박수 애니메이션)
   socket.on("result:emoji", ({ emojiType, emojiId, emojiContent }, ack) => {
     try {
