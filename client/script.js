@@ -1863,7 +1863,7 @@ function displayStory(chainIndex) {
 
   // 문장들을 순차적으로 표시
   if (entries.length > 0) {
-    setTimeout(() => {
+    chatAnimationTimer = setTimeout(() => {
       showNextChatMessage(entries, 0);
     }, 1500); // 제목 TTS 후 잠시 대기
   } else {
@@ -3188,18 +3188,24 @@ const DESIGN_WIDTH = 1920;  // 디자인 기준 가로 해상도
 
 function applyResponsiveScale() {
   const app = $("app");
+  const whiteBorderBg = $("white-border-bg");
   if (!app) return;
-  
+
   const windowWidth = window.innerWidth;
-  
+
   // 화면 가로 크기 기준으로 스케일 계산
   const scale = windowWidth / DESIGN_WIDTH;
-  
+
   // 최소/최대 스케일 제한 (0.5 ~ 1.5)
   const clampedScale = Math.min(Math.max(scale, 0.5), 1.5);
-  
+
   app.style.transform = `scale(${clampedScale})`;
-  
+
+  // 배경 이미지에도 같은 스케일 적용
+  if (whiteBorderBg) {
+    whiteBorderBg.style.transform = `translate(-50%, -50%) scale(${clampedScale})`;
+  }
+
   console.log(`Window: ${windowWidth}px, Scale: ${clampedScale.toFixed(3)}`);
 }
 

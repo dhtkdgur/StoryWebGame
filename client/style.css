@@ -56,6 +56,19 @@ body.bg-main {
   position: relative;
 }
 
+/* 모든 화면에 공통 배경 레이어 (공책 뒤, 파란 배경 앞) */
+.white-border-bg {
+  position: fixed;
+  top: 56.3%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2070px;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
 .hidden {
   display: none !important;
 }
@@ -1058,7 +1071,7 @@ button:disabled {
 
 #screen-results .results-left-panel {
   position: absolute;
-  left: 530px;
+  left: calc(50% - 540px);
   top: 30px;
   width: auto;
   height: auto;
@@ -1084,12 +1097,12 @@ button:disabled {
 
 #screen-results .results-right-panel {
   position: absolute;
-  right: 450px;
+  right: calc(50% - 450px);
   bottom: 70px;
 }
 
 #screen-results.results-host .results-right-panel {
-  right: 400px;
+  right: calc(50% - 400px);
 }
 
 #screen-results .results-side-controls--stack {
