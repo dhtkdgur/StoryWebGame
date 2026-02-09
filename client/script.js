@@ -1114,15 +1114,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     else if (promptsPlayersLeft?.contains(playerDiv)) parentSidebar = promptsPlayersLeft;
     else parentSidebar = promptsPlayersRight;
 
+    // 현재 화면 컨테이너 찾기 (스케일이 적용되는 #app 내부)
+    let currentScreen = null;
+    if (isPromptsScreen && screenPrompts) currentScreen = screenPrompts;
+    else if (isStoryScreen && screenStory) currentScreen = screenStory;
+    
+    // 화면을 찾지 못한 경우 fallback
+    if (!currentScreen) {
+      currentScreen = document.querySelector('.screen:not(.hidden)') || document.body;
+    }
+
     // 플레이어 위치 가져오기
     const playerRect = playerDiv.getBoundingClientRect();
-    const sidebarRect = parentSidebar.getBoundingClientRect();
+    const screenRect = currentScreen.getBoundingClientRect();
 
     // 이모티콘 엘리먼트 생성
     const emojiEl = document.createElement("div");
     emojiEl.className = "player-emoji-floating";
-    emojiEl.style.position = "absolute";
-    emojiEl.style.zIndex = "100";
+    emojiEl.style.position = "absolute"; // fixed → absolute로 변경 (화면 내 상대 위치)
+    emojiEl.style.zIndex = "9999"; // z-index를 매우 높게 설정
     emojiEl.style.pointerEvents = "none";
 
     if (emoji.type === "image") {
@@ -1151,25 +1161,25 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     const randomOffsetY = (Math.random() - 0.5) * 100; // -50px ~ +50px
     const randomRotation = (Math.random() - 0.5) * 60; // -30deg ~ +30deg
 
-    // 사이드바 기준 위치 계산
-    const relativeTop = playerRect.top - sidebarRect.top + playerRect.height / 2 + randomOffsetY;
+    // 화면 컨테이너 기준 위치 계산
+    const relativeTop = playerRect.top - screenRect.top + playerRect.height / 2 + randomOffsetY;
     let relativeLeft;
 
     if (isLeftSide) {
       // 왼쪽 사이드바: 프로필 오른쪽에 표시 (바깥쪽으로)
-      relativeLeft = playerRect.width + 20 + randomOffsetX;
+      relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
     } else {
       // 오른쪽 사이드바: 3열/4열 구분
-      // 사이드바 중앙을 기준으로 플레이어 위치 판단
-      const sidebarCenterX = sidebarRect.width / 2;
-      const playerCenterX = playerRect.left - sidebarRect.left + playerRect.width / 2;
+      const sidebarRect = parentSidebar.getBoundingClientRect();
+      const sidebarCenterX = sidebarRect.left + sidebarRect.width / 2;
+      const playerCenterX = playerRect.left + playerRect.width / 2;
       
       if (playerCenterX < sidebarCenterX) {
         // 3열(안쪽): 프로필 왼쪽에 표시
-        relativeLeft = -60 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left - 60 + randomOffsetX;
       } else {
         // 4열(바깥쪽): 프로필 오른쪽에 표시 (프로필을 가리지 않을 정도로)
-        relativeLeft = playerRect.width + 120 + randomOffsetX;
+        relativeLeft = playerRect.left - screenRect.left + playerRect.width + 20 + randomOffsetX;
       }
     }
 
@@ -1177,16 +1187,15 @@ function displayReceivedEmoji(senderId, senderName, emojiId) {
     emojiEl.style.left = relativeLeft + "px";
     emojiEl.style.transform = `rotate(${randomRotation}deg)`;
 
-    // 사이드바에 추가 (position이 static일 때만 relative로 변경)
-    if (getComputedStyle(parentSidebar).position === "static") {
-      parentSidebar.style.position = "relative";
+    // 현재 화면에 추가하여 스케일 적용을 받도록 함
+    if (getComputedStyle(currentScreen).position === "static") {
+      currentScreen.style.position = "relative";
     }
-    parentSidebar.appendChild(emojiEl);
+    currentScreen.appendChild(emojiEl);
     console.log("📍 이모티콘 추가됨:", {
-      parentSidebar: parentSidebar.id,
+      currentScreen: currentScreen.id || currentScreen.className,
       top: relativeTop,
       left: relativeLeft,
-      sidebarOverflow: getComputedStyle(parentSidebar).overflow,
       emojiEl: emojiEl
     });
 
@@ -1469,12 +1478,15 @@ if (window.speechSynthesis) {
 }
 
 // TTS 취소 함수
-let ttsQueue = []; // TTS 큐
-let isSpeaking = false; // 현재 발화 중인지
+let ttsQueue = [];
+let ttsResumeInterval = null;
 
 function cancelTTS() {
-  ttsQueue = []; // 큐 비우기
-  isSpeaking = false;
+  ttsQueue = [];
+  if (ttsResumeInterval) {
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
+  }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -1484,123 +1496,75 @@ function stopTTS() {
   cancelTTS();
 }
 
-// 텍스트를 문장 단위로 분리
-function splitTextIntoSentences(text) {
-  if (!text) return [];
-  
-  // 문장 구분 (마침표, 물음표, 느낌표, 줄바꿈 기준)
-  // 단, 너무 짧은 조각은 합치기
-  const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
-  const sentences = [];
-  let buffer = "";
-  
-  for (const sentence of rawSentences) {
-    const trimmed = sentence.trim();
-    if (!trimmed) continue;
-    
-    buffer += (buffer ? " " : "") + trimmed;
-    
-    // 버퍼가 충분히 길거나 문장 끝이면 추가
-    if (buffer.length >= 30 || /[.!?。！？]$/.test(buffer)) {
-      sentences.push(buffer);
-      buffer = "";
-    }
-  }
-  
-  // 남은 버퍼 추가
-  if (buffer.trim()) {
-    sentences.push(buffer.trim());
-  }
-  
-  // 문장이 없으면 전체 텍스트를 하나의 문장으로
-  if (sentences.length === 0 && text.trim()) {
-    sentences.push(text.trim());
-  }
-  
-  return sentences;
-}
-
 // 큐에서 다음 문장 읽기
-function processNextInQueue(finalCallback) {
-  if (ttsQueue.length === 0) {
-    isSpeaking = false;
-    if (finalCallback) finalCallback();
-    return;
-  }
-  
-  isSpeaking = true;
+function processNextInQueue() {
+  if (ttsQueue.length === 0) return;
+
   const sentence = ttsQueue.shift();
-  
-  // 음성 발화 객체 생성
   const utterance = new SpeechSynthesisUtterance(sentence);
   utterance.lang = 'ko-KR';
   utterance.rate = 1.0;
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
-  
+
   if (koreanVoice) {
     utterance.voice = koreanVoice;
   }
-  
+
   // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
-  // 주기적으로 resume 호출
-  const resumeInterval = setInterval(() => {
+  if (ttsResumeInterval) clearInterval(ttsResumeInterval);
+  ttsResumeInterval = setInterval(() => {
     if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
     }
   }, 5000);
-  
-  // 발화 완료 시 다음 문장 처리
+
   utterance.onend = () => {
-    clearInterval(resumeInterval);
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
+    setTimeout(() => processNextInQueue(), 100);
   };
-  
-  // 오류 처리
+
   utterance.onerror = (e) => {
-    clearInterval(resumeInterval);
-    // interrupted는 cancel 호출 시 발생 - 무시
+    clearInterval(ttsResumeInterval);
+    ttsResumeInterval = null;
     if (e.error !== "interrupted") {
       console.error("TTS 오류:", e.error);
     }
-    // 오류 발생해도 다음 문장 시도
-    setTimeout(() => {
-      processNextInQueue(finalCallback);
-    }, 100);
+    setTimeout(() => processNextInQueue(), 100);
   };
-  
+
   window.speechSynthesis.speak(utterance);
 }
 
-// 텍스트 읽기 함수 (긴 텍스트도 안정적으로 처리)
-function speakText(text, onEndCallback) {
-  // TTS 비활성화 또는 텍스트 없으면 바로 콜백 호출
-  if (!ttsEnabled || !text) {
-    if (onEndCallback) onEndCallback();
-    return;
-  }
-
-  // Web Speech API 지원 확인
-  if (!window.speechSynthesis) {
-    console.warn("Web Speech API를 지원하지 않는 브라우저입니다.");
-    if (onEndCallback) onEndCallback();
-    return;
-  }
+// 텍스트 읽기 함수 (메시지 진행과 독립적으로 동작)
+function speakText(text) {
+  if (!ttsEnabled || !text) return;
+  if (!window.speechSynthesis) return;
 
   // 이전 TTS 중지
   cancelTTS();
-  
-  // 텍스트를 문장 단위로 분리하여 큐에 추가
-  const sentences = splitTextIntoSentences(text);
-  ttsQueue = [...sentences];
-  
-  console.log("TTS 시작, 문장 수:", sentences.length);
-  
-  // 큐 처리 시작
-  processNextInQueue(onEndCallback);
+
+  // 텍스트를 문장 단위로 분리 (Chrome 긴 발화 끊김 방지)
+  const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
+  const sentences = [];
+  let buffer = "";
+
+  for (const s of rawSentences) {
+    const trimmed = s.trim();
+    if (!trimmed) continue;
+    buffer += (buffer ? " " : "") + trimmed;
+    if (buffer.length >= 30 || /[.!?。！？]$/.test(buffer)) {
+      sentences.push(buffer);
+      buffer = "";
+    }
+  }
+  if (buffer.trim()) sentences.push(buffer.trim());
+  if (sentences.length === 0 && text.trim()) sentences.push(text.trim());
+
+  ttsQueue = sentences;
+  processNextInQueue();
 }
 
 // 폭죽 효과 표시
@@ -1655,6 +1619,87 @@ function showFireworks(element) {
     setTimeout(() => {
       const emoji = document.createElement("div");
       emoji.textContent = emojiFireworks[Math.floor(Math.random() * emojiFireworks.length)];
+      emoji.style.cssText = `
+        position: absolute;
+        font-size: 24px;
+        pointer-events: none;
+        z-index: 1001;
+      `;
+
+      const rect = element.getBoundingClientRect();
+      emoji.style.left = rect.left + Math.random() * rect.width + "px";
+      emoji.style.top = rect.top + "px";
+
+      document.body.appendChild(emoji);
+
+      emoji.animate(
+        [
+          { transform: "translateY(0) scale(1)", opacity: 1 },
+          { transform: "translateY(-100px) scale(1.5)", opacity: 0 }
+        ],
+        {
+          duration: 1000,
+          easing: "ease-out"
+        }
+      ).onfinish = () => {
+        emoji.remove();
+      };
+    }, i * 100);
+  }
+}
+
+// 💩 폭죽 효과 표시 (화남 과반수)
+function showPoopFireworks(element) {
+  const poopColors = ["#8B4513", "#A0522D", "#6B3410", "#D2691E", "#CD853F"];
+
+  // 똥 색깔 파티클 생성
+  for (let i = 0; i < 20; i++) {
+    const particle = document.createElement("div");
+    particle.style.cssText = `
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: ${poopColors[Math.floor(Math.random() * poopColors.length)]};
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1000;
+    `;
+
+    const rect = element.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    const startY = rect.top + rect.height / 2;
+
+    particle.style.left = startX + "px";
+    particle.style.top = startY + "px";
+
+    document.body.appendChild(particle);
+
+    // 랜덤 방향으로 애니메이션
+    const angle = (Math.PI * 2 * i) / 20;
+    const distance = 50 + Math.random() * 50;
+    const endX = startX + Math.cos(angle) * distance;
+    const endY = startY + Math.sin(angle) * distance;
+
+    particle.animate(
+      [
+        { transform: "translate(0, 0) scale(1)", opacity: 1 },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0)`, opacity: 0 }
+      ],
+      {
+        duration: 800,
+        easing: "cubic-bezier(0, 0.5, 0.5, 1)"
+      }
+    ).onfinish = () => {
+      particle.remove();
+    };
+  }
+
+  // 똥 이모지 폭죽 효과
+  const poopEmojis = ["💩", "💩", "💩", "😡", "🤬"];
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      const emoji = document.createElement("div");
+      emoji.textContent = poopEmojis[Math.floor(Math.random() * poopEmojis.length)];
       emoji.style.cssText = `
         position: absolute;
         font-size: 24px;
@@ -1851,10 +1896,10 @@ function displayStory(chainIndex) {
     chatContainer.innerHTML = "";
   }
 
-  // 버튼 상태 업데이트 (애니메이션 중에는 비활성화)
-  updateResultButtons(true);
+  // 버튼 상태 업데이트 (항상 활성화)
+  updateResultButtons();
 
-  // 제목 TTS 먼저 (에러 핸들링)
+  // 제목 TTS (에러 핸들링)
   try {
     speakText(`${chain.ownerName}의 사생활`);
   } catch (e) {
@@ -1865,18 +1910,13 @@ function displayStory(chainIndex) {
   if (entries.length > 0) {
     chatAnimationTimer = setTimeout(() => {
       showNextChatMessage(entries, 0);
-    }, 1500); // 제목 TTS 후 잠시 대기
-  } else {
-    // 문장이 없으면 바로 버튼 활성화
-    updateResultButtons(false);
+    }, 1500);
   }
 }
 
 // 채팅 메시지 하나씩 표시
 function showNextChatMessage(entries, index) {
   if (index >= entries.length) {
-    // 모든 문장 표시 완료
-    updateResultButtons(false);
     return;
   }
 
@@ -1919,23 +1959,100 @@ function showNextChatMessage(entries, index) {
   bubbleDiv.className = "chat-bubble";
   bubbleDiv.innerHTML = highlightKeywords(entry.text || "", entry.usedKeywords || []);
 
+  // 리액션 버튼 컨테이너
+  const reactionContainer = document.createElement("div");
+  reactionContainer.style.cssText = "display: flex; gap: 10px; margin-top: 5px; pointer-events: auto !important; position: relative; z-index: 999 !important;";
+
   // 좋아요 버튼 추가
   const likeBtn = document.createElement("button");
+  likeBtn.type = "button";
   likeBtn.className = "like-btn";
-  likeBtn.innerHTML = `<span class="like-icon">❤️</span> <span class="like-count">0</span>`;
+  likeBtn.disabled = false;
+  likeBtn.innerHTML = `<span class="like-icon" style="pointer-events: none;">❤️</span> <span class="like-count" style="pointer-events: none;">0</span>`;
   likeBtn.dataset.chainIndex = currentChainIndex;
   likeBtn.dataset.entryIndex = index;
-  likeBtn.style.cssText = "margin-top: 5px; padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px;";
+  likeBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
 
-  likeBtn.addEventListener("click", () => {
+  likeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const chainIdx = parseInt(likeBtn.dataset.chainIndex);
     const entryIdx = parseInt(likeBtn.dataset.entryIndex);
+    console.log("하트 버튼 클릭:", chainIdx, entryIdx); // 디버깅용
     socket.emit("sentence:like", { chainIndex: chainIdx, entryIndex: entryIdx });
   });
 
+  // 화남 버튼 추가
+  const angryBtn = document.createElement("button");
+  angryBtn.type = "button";
+  angryBtn.className = "angry-btn";
+  angryBtn.disabled = false;
+  angryBtn.innerHTML = `<span class="angry-icon" style="pointer-events: none;">😡</span> <span class="angry-count" style="pointer-events: none;">0</span>`;
+  angryBtn.dataset.chainIndex = currentChainIndex;
+  angryBtn.dataset.entryIndex = index;
+  angryBtn.style.cssText = "padding: 5px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; cursor: pointer; font-size: 14px; pointer-events: auto !important; position: relative; z-index: 1000 !important;";
+
+  angryBtn.addEventListener("mouseenter", () => {
+    console.log("🖱️ 화남 버튼에 마우스 올림");
+  });
+
+  angryBtn.addEventListener("mouseleave", () => {
+    console.log("🖱️ 화남 버튼에서 마우스 벗어남");
+  });
+
+  angryBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const chainIdx = parseInt(angryBtn.dataset.chainIndex);
+    const entryIdx = parseInt(angryBtn.dataset.entryIndex);
+    console.log("========================================");
+    console.log("😡 화남 버튼 클릭!");
+    console.log("chainIndex:", chainIdx, "entryIndex:", entryIdx);
+    console.log("버튼 요소:", angryBtn);
+    console.log("현재 화남 수:", angryBtn.querySelector('.angry-count')?.textContent);
+    console.log("📤 서버로 sentence:angry 이벤트 전송 중...");
+    console.log("========================================");
+
+    socket.emit("sentence:angry", { chainIndex: chainIdx, entryIndex: entryIdx }, (response) => {
+      console.log("========================================");
+      console.log("📥 서버 응답 받음:");
+      console.log("response:", response);
+      if (response && response.ok) {
+        console.log("✅ 성공! angryCount:", response.angryCount, "totalPlayers:", response.totalPlayers);
+
+        // 즉시 UI 업데이트 (서버 브로드캐스트 기다리지 않고)
+        const angryCountSpan = angryBtn.querySelector('.angry-count');
+        if (angryCountSpan) {
+          angryCountSpan.textContent = response.angryCount;
+          console.log("✨ UI 업데이트 완료:", response.angryCount);
+        }
+
+        // 배경색 변경 (클릭했음을 표시)
+        angryBtn.style.background = "rgba(139, 69, 19, 0.3)";
+        angryBtn.style.borderColor = "rgba(139, 69, 19, 0.6)";
+
+        // 과반수 체크
+        if (response.angryCount > response.totalPlayers / 2) {
+          console.log("💩 과반수 달성! 똥 폭죽!");
+          const bubbleDiv = angryBtn.closest(".chat-content")?.querySelector(".chat-bubble");
+          if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+            bubbleDiv.classList.add("poop-fireworks-shown");
+            showPoopFireworks(bubbleDiv);
+          }
+        }
+      } else if (response && !response.ok) {
+        console.error("❌ 서버 에러:", response.error);
+      }
+      console.log("========================================");
+    });
+  });
+
+  reactionContainer.appendChild(likeBtn);
+  reactionContainer.appendChild(angryBtn);
+
   contentDiv.appendChild(writerDiv);
   contentDiv.appendChild(bubbleDiv);
-  contentDiv.appendChild(likeBtn);
+  contentDiv.appendChild(reactionContainer);
 
   messageDiv.appendChild(avatarDiv);
   messageDiv.appendChild(contentDiv);
@@ -1948,39 +2065,33 @@ function showNextChatMessage(entries, index) {
 
   displayedEntryCount = index + 1;
 
-  // TTS로 읽기 - 완료 후 다음 메시지로 넘어감
-  speakText(entry.text, () => {
-    // TTS 완료 후 약간의 딜레이 추가 (자연스러운 전환)
+  // TTS로 읽기 (백그라운드, 메시지 진행과 독립)
+  speakText(entry.text);
+
+  // 고정 타이머로 다음 메시지 표시 (TTS 완료를 기다리지 않음)
+  const delay = Math.max(2000, (entry.text || "").length * 80);
+  if (!isLastEntry) {
     chatAnimationTimer = setTimeout(() => {
-      if (isLastEntry) {
-        // 마지막 문장이면 버튼 활성화
-        updateResultButtons(false);
-      } else {
-        // 다음 메시지 표시
-        showNextChatMessage(entries, index + 1);
-      }
-    }, 500); // TTS 완료 후 0.5초 딜레이
-  });
+      showNextChatMessage(entries, index + 1);
+    }, delay);
+  }
 }
 
 // 버튼 상태 업데이트
-function updateResultButtons(isAnimating = false) {
+function updateResultButtons() {
   const chains = resultData?.chains || [];
   const isFirstStory = currentChainIndex === 0;
   const isLastStory = currentChainIndex === chains.length - 1;
   const isHost = isResultHost();
-  const chain = chains[currentChainIndex];
-  const entries = chain?.entries || [];
-  const allDisplayed = displayedEntryCount >= entries.length;
 
   if (screenResults) {
     screenResults.classList.toggle("results-host", isHost);
   }
 
-  // 이전/다음 버튼은 방장만 표시
+  // 이전/다음 버튼은 방장만 표시, TTS 중에도 항상 활성화
   if (btnPrev) {
     if (isHost) {
-      btnPrev.disabled = isFirstStory || isAnimating;
+      btnPrev.disabled = isFirstStory;
       btnPrev.classList.remove("hidden");
     } else {
       btnPrev.classList.add("hidden");
@@ -1989,25 +2100,18 @@ function updateResultButtons(isAnimating = false) {
 
   if (btnNextStory) {
     if (isHost) {
-      // 버튼을 숨기지 않고 항상 표시, 비활성화로 처리
       btnNextStory.classList.remove("hidden");
-      if (isLastStory && allDisplayed) {
-        // 마지막 스토리에서 모든 문장 표시 완료 시 비활성화
-        btnNextStory.disabled = true;
-      } else {
-        btnNextStory.disabled = isAnimating || !allDisplayed;
-      }
+      btnNextStory.disabled = isLastStory;
     } else {
       btnNextStory.classList.add("hidden");
     }
   }
 
-  // 다시하기 버튼 (마지막 스토리에서 모든 문장 표시 완료 시 활성화, 방장만)
+  // 다시하기 버튼 (마지막 스토리일 때만 활성화, 방장만)
   if (btnRestart) {
     if (isHost) {
       btnRestart.classList.remove("hidden");
-      // 마지막 스토리에서 모든 문장 표시 완료 시에만 활성화
-      btnRestart.disabled = !(isLastStory && allDisplayed);
+      btnRestart.disabled = !isLastStory;
     } else {
       btnRestart.classList.add("hidden");
     }
@@ -2419,11 +2523,63 @@ socket.on("sentence:likeUpdated", ({ chainIndex, entryIndex, likeCount, totalPla
   // 과반수 이상 좋아요 시 폭죽 효과
   if (likeCount > totalPlayers / 2) {
     // 이전에 폭죽을 표시하지 않았으면 표시
-    const bubbleDiv = likeBtn.previousElementSibling;
+    const bubbleDiv = likeBtn.closest(".chat-content")?.querySelector(".chat-bubble");
     if (bubbleDiv && !bubbleDiv.classList.contains("fireworks-shown")) {
       bubbleDiv.classList.add("fireworks-shown");
       showFireworks(bubbleDiv);
     }
+  }
+});
+
+// 문장 화남 업데이트
+socket.on("sentence:angryUpdated", ({ chainIndex, entryIndex, angryCount, totalPlayers, angriedBy }) => {
+  console.log("🔴 화남 업데이트 수신:", { chainIndex, entryIndex, angryCount, totalPlayers, angriedBy });
+
+  // 해당 문장의 화남 버튼 찾기
+  const angryBtn = document.querySelector(`button.angry-btn[data-chain-index="${chainIndex}"][data-entry-index="${entryIndex}"]`);
+
+  if (!angryBtn) {
+    console.error("❌ 화남 버튼을 찾을 수 없음:", { chainIndex, entryIndex });
+    console.log("현재 존재하는 화남 버튼들:", document.querySelectorAll('.angry-btn'));
+    return;
+  }
+
+  console.log("✅ 화남 버튼 찾음:", angryBtn);
+
+  // 화남 수 업데이트
+  const angryCountSpan = angryBtn.querySelector(".angry-count");
+  if (angryCountSpan) {
+    console.log(`📊 화남 수 업데이트: ${angryCountSpan.textContent} → ${angryCount}`);
+    angryCountSpan.textContent = angryCount;
+  } else {
+    console.error("❌ angry-count span을 찾을 수 없음");
+  }
+
+  // 내가 화남 했는지 확인
+  const iAngried = angriedBy.includes(socket.id);
+  console.log("😡 내가 화남 했나?", iAngried, "/ 내 ID:", socket.id);
+
+  if (iAngried) {
+    angryBtn.style.background = "rgba(255, 80, 50, 0.3)";
+    angryBtn.style.borderColor = "rgba(255, 80, 50, 0.6)";
+  } else {
+    angryBtn.style.background = "rgba(255,255,255,0.1)";
+    angryBtn.style.borderColor = "rgba(255,255,255,0.3)";
+  }
+
+  // 과반수 이상 화남 시 💩 폭죽 효과
+  if (angryCount > totalPlayers / 2) {
+    console.log("💩 과반수 화남! 똥 폭죽 발동:", angryCount, ">", totalPlayers / 2);
+    // 이전에 똥 폭죽을 표시하지 않았으면 표시
+    const bubbleDiv = angryBtn.closest(".chat-content")?.querySelector(".chat-bubble");
+    if (bubbleDiv && !bubbleDiv.classList.contains("poop-fireworks-shown")) {
+      bubbleDiv.classList.add("poop-fireworks-shown");
+      showPoopFireworks(bubbleDiv);
+    } else {
+      console.log("⚠️ 똥 폭죽 이미 표시됨 또는 bubbleDiv 없음");
+    }
+  } else {
+    console.log("ℹ️ 아직 과반수 미달:", angryCount, "<=", totalPlayers / 2);
   }
 });
 
@@ -3205,8 +3361,6 @@ function applyResponsiveScale() {
   if (whiteBorderBg) {
     whiteBorderBg.style.transform = `translate(-50%, -50%) scale(${clampedScale})`;
   }
-
-  console.log(`Window: ${windowWidth}px, Scale: ${clampedScale.toFixed(3)}`);
 }
 
 // 초기 실행 및 리사이즈 이벤트
