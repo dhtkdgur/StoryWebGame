@@ -1097,14 +1097,15 @@ button:disabled {
   justify-content: center;
 }
 
+/* 비방장 포스트잇 위치 */
 #screen-results .results-right-panel {
   position: absolute;
-  right: calc(50% - 450px);
+  right: calc(50% - 500px);
   bottom: 70px;
 }
-
+/* 방장 포스트잇 위치 */
 #screen-results.results-host .results-right-panel {
-  right: calc(50% - 400px);
+  right: calc(50% - 550px);
 }
 
 #screen-results .results-side-controls--stack {
@@ -1992,6 +1993,12 @@ button:disabled {
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   z-index: 999;
+}
+
+/* 결과 화면 이모티콘 창만 따로 조정 */
+.results-emoji-picker.sidebar-emoji-picker-always {
+  left: -50px;  
+  top: 10px;    
 }
 
 .sidebar-emoji-picker-always .sidebar-emoji-btn {
