@@ -28,9 +28,9 @@ body {
   font-family: 'Arial', sans-serif;
   background-color: var(--bg-color);
   background-image: url('./image/00_전체/배경.png');
-  background-size: 104%;
-  background-position: center -10px;
-  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: repeat;
   background-attachment: fixed;
   color: var(--text-white);
   display: flex;
@@ -42,9 +42,9 @@ body {
 
 body.bg-main {
   background-image: url("/image/00_전체/배경.png");
-  background-size: 104%;
-  background-position: center -10px;
-  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: repeat;
   background-attachment: fixed;
 }
 
@@ -2561,6 +2561,12 @@ button:disabled {
   border-radius: 15px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
+}
+
+/* 결과 화면 이모티콘 창 위치 조정 (라운드 화면과 별개) */
+.results-emoji-picker.sidebar-emoji-picker-always {
+  left: -150px;  /* 원하는 위치로 조정 (숫자를 크게 = 더 왼쪽, 작게 = 더 오른쪽) */
+  top: 10px;     /* 위아래 위치도 조정 가능 */
 }
 
 .results-emoji-picker .sidebar-emoji-btn {
