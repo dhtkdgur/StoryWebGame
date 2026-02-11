@@ -117,9 +117,9 @@ test.describe("TTS - 문장 끝까지 읽기 테스트", () => {
     // 페이지 로드
     await page.goto(SERVER_URL, { waitUntil: "domcontentloaded" });
 
-    // ttsEnabled = true 확인
+    // ttsEnabled = true 설정 (module-scoped 변수이므로 setter 사용)
     await page.evaluate(() => {
-      window.ttsEnabled = true;
+      setTtsEnabled(true);
     });
   });
 

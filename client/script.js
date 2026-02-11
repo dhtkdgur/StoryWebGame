@@ -135,6 +135,11 @@ let displayedEntryCount = 0;   // 현재 표시된 문장 수
 // TTS 관련 (Web Speech API 사용)
 let ttsEnabled = true;       // TTS 활성화 여부
 
+// 테스트에서 ttsEnabled를 제어할 수 있도록 setter 노출
+function setTtsEnabled(value) {
+  ttsEnabled = !!value;
+}
+
 // 닉네임 색상 배열 (다양한 색상으로 구분)
 const NICKNAME_COLORS = [
   "#f59e0b", // 주황 (기존)
@@ -1550,16 +1555,6 @@ function processNextInQueue() {
     }
   }, 3000);
 
-  // 안전장치: onend가 발생하지 않는 Chrome 버그 대응
-  if (ttsWatchdogInterval) clearInterval(ttsWatchdogInterval);
-  ttsWatchdogInterval = setInterval(() => {
-    if (finished) return;
-    if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-      console.warn("TTS watchdog: onend 미발생 감지, 강제 진행");
-      onFinish();
-    }
-  }, 500);
-
   utterance.onend = () => {
     onFinish();
   };
@@ -1572,6 +1567,17 @@ function processNextInQueue() {
   };
 
   window.speechSynthesis.speak(utterance);
+
+  // 안전장치: onend가 발생하지 않는 Chrome 버그 대응
+  // speak() 호출 후에 설정해야 브라우저가 speaking=true로 만들기 전에 watchdog이 오작동하지 않음
+  if (ttsWatchdogInterval) clearInterval(ttsWatchdogInterval);
+  ttsWatchdogInterval = setInterval(() => {
+    if (finished) return;
+    if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+      console.warn("TTS watchdog: onend 미발생 감지, 강제 진행");
+      onFinish();
+    }
+  }, 500);
 }
 
 // 텍스트를 문장 단위로 분리
