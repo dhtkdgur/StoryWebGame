@@ -141,5 +141,8 @@ vite.config.ts.timestamp-*
 # .gitignore 추가 내용
 .env.local
 
+# Playwright test results
+test-results/
+
 # claude code
 CLAUDE.md
