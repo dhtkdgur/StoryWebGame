@@ -1480,12 +1480,19 @@ if (window.speechSynthesis) {
 // TTS 취소 함수
 let ttsQueue = [];
 let ttsResumeInterval = null;
+let ttsWatchdogInterval = null;
+let ttsCurrentCallback = null;
 
 function cancelTTS() {
   ttsQueue = [];
+  ttsCurrentCallback = null;
   if (ttsResumeInterval) {
     clearInterval(ttsResumeInterval);
     ttsResumeInterval = null;
+  }
+  if (ttsWatchdogInterval) {
+    clearInterval(ttsWatchdogInterval);
+    ttsWatchdogInterval = null;
   }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
@@ -1498,7 +1505,13 @@ function stopTTS() {
 
 // 큐에서 다음 문장 읽기
 function processNextInQueue() {
-  if (ttsQueue.length === 0) return;
+  if (ttsQueue.length === 0) {
+    // 모든 문장 완료 → 콜백 호출
+    const cb = ttsCurrentCallback;
+    ttsCurrentCallback = null;
+    if (cb) cb();
+    return;
+  }
 
   const sentence = ttsQueue.shift();
   const utterance = new SpeechSynthesisUtterance(sentence);
@@ -1511,42 +1524,58 @@ function processNextInQueue() {
     utterance.voice = koreanVoice;
   }
 
+  let finished = false; // 중복 호출 방지
+
+  function onFinish() {
+    if (finished) return;
+    finished = true;
+    if (ttsResumeInterval) {
+      clearInterval(ttsResumeInterval);
+      ttsResumeInterval = null;
+    }
+    if (ttsWatchdogInterval) {
+      clearInterval(ttsWatchdogInterval);
+      ttsWatchdogInterval = null;
+    }
+    setTimeout(() => processNextInQueue(), 100);
+  }
+
   // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
   if (ttsResumeInterval) clearInterval(ttsResumeInterval);
   ttsResumeInterval = setInterval(() => {
-    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-      window.speechSynthesis.pause();
+    if (!window.speechSynthesis) return;
+    // paused 상태면 resume만 호출 (pause+resume 패턴은 onend 누락 유발)
+    if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
-  }, 5000);
+  }, 3000);
+
+  // 안전장치: onend가 발생하지 않는 Chrome 버그 대응
+  if (ttsWatchdogInterval) clearInterval(ttsWatchdogInterval);
+  ttsWatchdogInterval = setInterval(() => {
+    if (finished) return;
+    if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+      console.warn("TTS watchdog: onend 미발생 감지, 강제 진행");
+      onFinish();
+    }
+  }, 500);
 
   utterance.onend = () => {
-    clearInterval(ttsResumeInterval);
-    ttsResumeInterval = null;
-    setTimeout(() => processNextInQueue(), 100);
+    onFinish();
   };
 
   utterance.onerror = (e) => {
-    clearInterval(ttsResumeInterval);
-    ttsResumeInterval = null;
     if (e.error !== "interrupted") {
       console.error("TTS 오류:", e.error);
     }
-    setTimeout(() => processNextInQueue(), 100);
+    onFinish();
   };
 
   window.speechSynthesis.speak(utterance);
 }
 
-// 텍스트 읽기 함수 (메시지 진행과 독립적으로 동작)
-function speakText(text) {
-  if (!ttsEnabled || !text) return;
-  if (!window.speechSynthesis) return;
-
-  // 이전 TTS 중지
-  cancelTTS();
-
-  // 텍스트를 문장 단위로 분리 (Chrome 긴 발화 끊김 방지)
+// 텍스트를 문장 단위로 분리
+function splitTextForTTS(text) {
   const rawSentences = text.split(/(?<=[.!?。！？\n])\s*/);
   const sentences = [];
   let buffer = "";
@@ -1562,8 +1591,27 @@ function speakText(text) {
   }
   if (buffer.trim()) sentences.push(buffer.trim());
   if (sentences.length === 0 && text.trim()) sentences.push(text.trim());
+  return sentences;
+}
 
-  ttsQueue = sentences;
+// 텍스트 읽기 함수 (콜백 지원: TTS 완료 후 호출)
+function speakText(text, onEndCallback) {
+  if (!ttsEnabled || !text) {
+    if (onEndCallback) onEndCallback();
+    return;
+  }
+  if (!window.speechSynthesis) {
+    if (onEndCallback) onEndCallback();
+    return;
+  }
+
+  // 이전 TTS 중지
+  cancelTTS();
+
+  // 텍스트를 문장 단위로 분리 (Chrome 긴 발화 끊김 방지)
+  ttsQueue = splitTextForTTS(text);
+  ttsCurrentCallback = onEndCallback || null;
+  console.log("TTS 시작, 문장 수:", ttsQueue.length, "텍스트:", text.substring(0, 40));
   processNextInQueue();
 }
 
@@ -1899,18 +1947,27 @@ function displayStory(chainIndex) {
   // 버튼 상태 업데이트 (항상 활성화)
   updateResultButtons();
 
-  // 제목 TTS (에러 핸들링)
-  try {
-    speakText(`${chain.ownerName}의 사생활`);
-  } catch (e) {
-    console.error("제목 TTS 재생 중 오류:", e);
-  }
-
-  // 문장들을 순차적으로 표시
+  // 제목 TTS → 완료 후 첫 메시지 표시
   if (entries.length > 0) {
-    chatAnimationTimer = setTimeout(() => {
-      showNextChatMessage(entries, 0);
-    }, 1500);
+    try {
+      speakText(`${chain.ownerName}의 사생활`, () => {
+        // 제목 TTS 완료 후 잠시 대기 → 첫 메시지 표시
+        chatAnimationTimer = setTimeout(() => {
+          showNextChatMessage(entries, 0);
+        }, 500);
+      });
+    } catch (e) {
+      console.error("제목 TTS 재생 중 오류:", e);
+      chatAnimationTimer = setTimeout(() => {
+        showNextChatMessage(entries, 0);
+      }, 1500);
+    }
+  } else {
+    try {
+      speakText(`${chain.ownerName}의 사생활`);
+    } catch (e) {
+      console.error("제목 TTS 재생 중 오류:", e);
+    }
   }
 }
 
@@ -2065,16 +2122,15 @@ function showNextChatMessage(entries, index) {
 
   displayedEntryCount = index + 1;
 
-  // TTS로 읽기 (백그라운드, 메시지 진행과 독립)
-  speakText(entry.text);
-
-  // 고정 타이머로 다음 메시지 표시 (TTS 완료를 기다리지 않음)
-  const delay = Math.max(2000, (entry.text || "").length * 80);
-  if (!isLastEntry) {
-    chatAnimationTimer = setTimeout(() => {
-      showNextChatMessage(entries, index + 1);
-    }, delay);
-  }
+  // TTS로 읽기 → 완료 후 다음 메시지 표시
+  speakText(entry.text, () => {
+    // TTS 완료 후 다음 메시지로
+    if (!isLastEntry) {
+      chatAnimationTimer = setTimeout(() => {
+        showNextChatMessage(entries, index + 1);
+      }, 500);
+    }
+  });
 }
 
 // 버튼 상태 업데이트
