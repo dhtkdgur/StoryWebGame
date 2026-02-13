@@ -1486,6 +1486,7 @@ if (window.speechSynthesis) {
 let ttsQueue = [];
 let ttsResumeInterval = null;
 let ttsWatchdogInterval = null;
+let ttsWatchdogTimeout = null; // watchdog 지연 시작용 timeout ID
 let ttsCurrentCallback = null;
 
 function cancelTTS() {
@@ -1498,6 +1499,10 @@ function cancelTTS() {
   if (ttsWatchdogInterval) {
     clearInterval(ttsWatchdogInterval);
     ttsWatchdogInterval = null;
+  }
+  if (ttsWatchdogTimeout) {
+    clearTimeout(ttsWatchdogTimeout);
+    ttsWatchdogTimeout = null;
   }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
@@ -1542,18 +1547,12 @@ function processNextInQueue() {
       clearInterval(ttsWatchdogInterval);
       ttsWatchdogInterval = null;
     }
+    if (ttsWatchdogTimeout) {
+      clearTimeout(ttsWatchdogTimeout);
+      ttsWatchdogTimeout = null;
+    }
     setTimeout(() => processNextInQueue(), 100);
   }
-
-  // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
-  if (ttsResumeInterval) clearInterval(ttsResumeInterval);
-  ttsResumeInterval = setInterval(() => {
-    if (!window.speechSynthesis) return;
-    // paused 상태면 resume만 호출 (pause+resume 패턴은 onend 누락 유발)
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
-  }, 3000);
 
   utterance.onend = () => {
     onFinish();
@@ -1568,16 +1567,34 @@ function processNextInQueue() {
 
   window.speechSynthesis.speak(utterance);
 
-  // 안전장치: onend가 발생하지 않는 Chrome 버그 대응
-  // speak() 호출 후에 설정해야 브라우저가 speaking=true로 만들기 전에 watchdog이 오작동하지 않음
-  if (ttsWatchdogInterval) clearInterval(ttsWatchdogInterval);
-  ttsWatchdogInterval = setInterval(() => {
-    if (finished) return;
-    if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-      console.warn("TTS watchdog: onend 미발생 감지, 강제 진행");
-      onFinish();
+  // Chrome 버그 대응: 긴 발화 시 자동 중단 방지
+  // speak() 호출 직후에 시작하되, resume()은 speaking && paused 상태일 때만 호출
+  if (ttsResumeInterval) clearInterval(ttsResumeInterval);
+  ttsResumeInterval = setInterval(() => {
+    if (!window.speechSynthesis) return;
+    // 버그 2 수정: speaking이 true이면서 paused 상태일 때만 resume 호출
+    // speaking=false이거나 paused=false이면 resume 호출하지 않음 (중복 재생 방지)
+    if (window.speechSynthesis.speaking && window.speechSynthesis.paused) {
+      console.log("TTS resume 호출 (paused 상태 감지)");
+      window.speechSynthesis.resume();
     }
-  }, 500);
+  }, 3000);
+
+  // 안전장치: onend가 발생하지 않는 Chrome 버그 대응
+  // 버그 1 수정: speak() 호출 후 1초 뒤에 watchdog 시작 (브라우저가 speaking 상태 설정할 시간 확보)
+  if (ttsWatchdogInterval) clearInterval(ttsWatchdogInterval);
+  if (ttsWatchdogTimeout) clearTimeout(ttsWatchdogTimeout);
+  ttsWatchdogTimeout = setTimeout(() => {
+    if (finished) return; // 이미 완료되었으면 watchdog 시작하지 않음
+    ttsWatchdogInterval = setInterval(() => {
+      if (finished) return;
+      // speaking=false이고 pending도 없으면 onend가 누락된 것으로 판단
+      if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+        console.warn("TTS watchdog: onend 미발생 감지, 강제 진행");
+        onFinish();
+      }
+    }, 500);
+  }, 1000); // speak() 호출 후 1초 뒤에 watchdog 시작
 }
 
 // 텍스트를 문장 단위로 분리
