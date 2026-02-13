@@ -58,8 +58,8 @@ body.bg-main {
 
 /* 모든 화면에 공통 배경 레이어 (공책 뒤, 파란 배경 앞) */
 .white-border-bg {
-  position: fixed;
-  top: 56.3%;
+  position: absolute;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 2070px;
@@ -76,8 +76,10 @@ body.bg-main {
 #app {
   padding-top: 120px;
   /* 스케일링 기준점 */
-  transform-origin: top center;
-  position: relative;
+  transform-origin: center center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
 }
 
 /* --------------------
@@ -343,6 +345,7 @@ button:disabled {
   align-items: center;
   box-shadow: none;
   background-color: transparent;
+  overflow: hidden;
 }
 
 .main-note-bg {
@@ -350,7 +353,7 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 230%;
+  width: 105%;
   height: auto;
   max-width: none;
   z-index: 1;
@@ -702,14 +705,15 @@ button:disabled {
   gap: 50px;
   background-color: transparent;
   box-shadow: none;
+  overflow: hidden;
 }
 
 .lobby-note-bg {
   position: absolute;
-  top: 55%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 90%;
+  width: 105%;
   height: auto;
   z-index: 1;
   pointer-events: none;
@@ -1125,6 +1129,7 @@ button:disabled {
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
+  overflow: hidden;
 }
 
 #screen-results .chat-container {
@@ -2303,7 +2308,7 @@ button:disabled {
 }
 
 .result-emoji-container {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;

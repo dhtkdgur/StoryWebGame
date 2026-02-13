@@ -50,10 +50,9 @@
   <!-- 로고 (모든 화면에서 동일한 위치) -->
   <img class="site-logo" src="/image/00_전체/로고.png" alt="StoryWebGame 로고">
 
-  <!-- 공통 배경 레이어 (공책 뒤, 파란 배경 앞) -->
-  <img id="white-border-bg" class="white-border-bg" src="/image/Main_WhiteBorder.png" alt="배경">
-
   <div id="app">
+    <!-- 공통 배경 레이어 (공책 뒤, 파란 배경 앞) - #app 내부로 이동 -->
+    <img id="white-border-bg" class="white-border-bg" src="/image/Main_WhiteBorder.png" alt="배경">
 
     <!-- 1. 입장 화면 (JS: screen-name) -->
     <section id="screen-name" class="screen">
@@ -331,6 +330,9 @@
         </div>
 
         <div id="chat-container" class="chat-container"></div>
+
+        <!-- 결과 화면 이모티콘 애니메이션 컨테이너 (.results-container 안으로 이동) -->
+        <div id="result-emoji-container" class="result-emoji-container"></div>
       </div>
 
       <!-- 오른쪽: 포스트잇 버튼들 -->
@@ -362,9 +364,6 @@
     </main>
 
   </div>
-
-  <!-- 결과 화면 이모티콘 애니메이션 컨테이너 (화면 전체에 표시) -->
-  <div id="result-emoji-container" class="result-emoji-container"></div>
 </section>
 
 
