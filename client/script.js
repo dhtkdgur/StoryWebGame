@@ -3406,7 +3406,6 @@ const DESIGN_WIDTH = 1920;  // 디자인 기준 가로 해상도
 
 function applyResponsiveScale() {
   const app = $("app");
-  const whiteBorderBg = $("white-border-bg");
   if (!app) return;
 
   const windowWidth = window.innerWidth;
@@ -3417,12 +3416,8 @@ function applyResponsiveScale() {
   // 최소/최대 스케일 제한 (0.5 ~ 1.5)
   const clampedScale = Math.min(Math.max(scale, 0.5), 1.5);
 
-  app.style.transform = `scale(${clampedScale})`;
-
-  // 배경 이미지에도 같은 스케일 적용
-  if (whiteBorderBg) {
-    whiteBorderBg.style.transform = `translate(-50%, -50%) scale(${clampedScale})`;
-  }
+  // #app에 translate와 scale 함께 적용 (#white-border-bg는 #app 내부에 있으므로 함께 scale됨)
+  app.style.transform = `translate(-50%, -50%) scale(${clampedScale})`;
 }
 
 // 초기 실행 및 리사이즈 이벤트
